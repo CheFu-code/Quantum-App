@@ -1,0 +1,122 @@
+import {
+  QUANTUM_CHAT_API_URL,
+  type QuantumModel,
+} from "@/constants/quantum";
+import type {
+  ChatPreferences,
+  ImageAttachment,
+  Message,
+  MessageMetadata,
+} from "@/types/quantum";
+
+type QuantumResponsePayload = {
+  createdAt?: string;
+  images?: Message["generatedImages"];
+  message?: string;
+  metadata?: MessageMetadata;
+};
+
+export async function requestQuantumReply({
+  attachments,
+  message,
+  messages,
+  preferences,
+  selectedModel,
+  signal,
+  webSearchEnabled,
+}: {
+  attachments: ImageAttachment[];
+  message: string;
+  messages: Message[];
+  preferences: ChatPreferences;
+  selectedModel: QuantumModel;
+  signal: AbortSignal;
+  webSearchEnabled: boolean;
+}) {
+  const response = await fetch(QUANTUM_CHAT_API_URL, {
+    method: "POST",
+    headers: {
+      Accept: "application/json",
+      "Content-Type": "application/json",
+      "x-chefu-app": "quantum",
+    },
+    signal,
+    body: JSON.stringify({
+      attachments: attachments.map(({ data, mimeType, name, size }) => ({
+        data,
+        mimeType,
+        name,
+        size,
+      })),
+      history: buildVisibleHistory(messages),
+      message: message || "Describe the attached file.",
+      model: selectedModel.id,
+      responseStyle: preferences.responseStyle,
+      serviceTier: preferences.serviceTier,
+      tools: {
+        codeExecution: preferences.codeExecution,
+        fileSearch: preferences.fileSearch,
+        mapsGrounding: preferences.mapsGrounding,
+        urlContext: preferences.urlContext,
+      },
+      webSearch: webSearchEnabled,
+    }),
+  });
+
+  const data = (await response.json().catch(() => null)) as
+    | (QuantumResponsePayload & { error?: string })
+    | null;
+
+  if (!response.ok) {
+    throw new Error(
+      data?.error || `Quantum returned HTTP ${response.status}.`,
+    );
+  }
+
+  return {
+    createdAt: data?.createdAt,
+    generatedImages: normalizeGeneratedImages(data?.images),
+    message: data?.message || "",
+    metadata: data?.metadata,
+  };
+}
+
+function buildVisibleHistory(messages: Message[]) {
+  return messages
+    .slice(-12)
+    .filter(
+      (message) =>
+        (message.role === "user" || message.role === "assistant") &&
+        message.status !== "failed" &&
+        message.status !== "thinking" &&
+        message.status !== "streaming",
+    )
+    .map((message) => ({
+      role: message.role,
+      content: sanitizeHistoryContent(message.content),
+    }))
+    .filter((message) => message.content.trim().length > 0)
+    .slice(-8);
+}
+
+function sanitizeHistoryContent(value: string) {
+  return value
+    .replace(/^```[\w-]*\n[\s\S]*?\n```\s*/g, "")
+    .replace(/\n{2,}#{2,3}\s+Sources\s*\n[\s\S]+$/i, "")
+    .trim();
+}
+
+function normalizeGeneratedImages(images: QuantumResponsePayload["images"]) {
+  if (!Array.isArray(images)) return [];
+
+  return images
+    .filter((image) =>
+      Boolean(image?.data && image.mimeType?.startsWith("image/")),
+    )
+    .map((image, index) => ({
+      id: image.id || `generated-image-${index}`,
+      mimeType: image.mimeType || "image/png",
+      data: image.data || "",
+      alt: image.alt || `Generated image ${index + 1}`,
+    }));
+}
