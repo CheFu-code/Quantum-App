@@ -28,6 +28,7 @@ import type {
   ImageAttachment,
   Message,
   MessageFeedbackRating,
+  SessionUser,
 } from "@/types/quantum";
 
 type ActiveRequest = {
@@ -47,6 +48,7 @@ export function useQuantumChatActions({
   isTyping,
   preferences,
   selectedModel,
+  sessionUser,
   setActiveThreadId,
   setAttachments,
   setConversationFilter,
@@ -63,6 +65,9 @@ export function useQuantumChatActions({
   setWebSearchEnabled,
   threads,
   webSearchEnabled,
+  onOpenAccount,
+  onSignIn,
+  onSignOut,
 }: {
   activeRequestRef: MutableRefObject<ActiveRequest | null>;
   activeThread?: ChatThread;
@@ -72,6 +77,7 @@ export function useQuantumChatActions({
   isTyping: boolean;
   preferences: ChatPreferences;
   selectedModel: QuantumModel;
+  sessionUser: SessionUser | null;
   setActiveThreadId: StateSetter<string>;
   setAttachments: StateSetter<ImageAttachment[]>;
   setConversationFilter: StateSetter<ConversationFilter>;
@@ -88,6 +94,9 @@ export function useQuantumChatActions({
   setWebSearchEnabled: StateSetter<boolean>;
   threads: ChatThread[];
   webSearchEnabled: boolean;
+  onOpenAccount: () => Promise<void>;
+  onSignIn: () => Promise<void>;
+  onSignOut: () => Promise<void>;
 }) {
   function updatePreference<Key extends keyof ChatPreferences>(
     key: Key,
@@ -142,6 +151,7 @@ export function useQuantumChatActions({
         preferences,
         selectedModel,
         signal: controller.signal,
+        userId: sessionUser?.uid,
         webSearchEnabled,
       });
 
@@ -222,6 +232,7 @@ export function useQuantumChatActions({
         preferences,
         selectedModel,
         signal: controller.signal,
+        userId: sessionUser?.uid,
         webSearchEnabled,
       });
 
@@ -317,7 +328,7 @@ export function useQuantumChatActions({
   }
 
   function confirmDeleteThread(threadId: string) {
-    Alert.alert("Delete conversation", "This local conversation will be removed.", [
+    Alert.alert("Delete conversation", "This conversation will be removed.", [
       { style: "cancel", text: "Cancel" },
       {
         onPress: () => deleteThread(threadId),
@@ -332,7 +343,7 @@ export function useQuantumChatActions({
   }
 
   function clearConversations() {
-    Alert.alert("Clear conversations", "All local Quantum history will be removed.", [
+    Alert.alert("Clear conversations", "All Quantum history will be removed.", [
       { style: "cancel", text: "Cancel" },
       {
         onPress: () => {
@@ -355,10 +366,24 @@ export function useQuantumChatActions({
     setNotice("Preferences reset.");
   }
 
+  async function openLogin() {
+    await onSignIn();
+  }
+
+  async function openAccount() {
+    await onOpenAccount();
+  }
+
+  async function signOut() {
+    await onSignOut();
+  }
+
   return {
     clearConversations,
     confirmDeleteThread,
     copyMessage,
+    openAccount,
+    openLogin,
     pickFiles,
     rateMessage,
     regenerateResponse,
@@ -373,6 +398,7 @@ export function useQuantumChatActions({
     setSettingsOpen,
     setSidebarOpen,
     setWebSearchEnabled,
+    signOut,
     startNewConversation,
     stopResponse,
     toggleThreadStar,

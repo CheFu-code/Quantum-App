@@ -54,10 +54,20 @@ export default function Index() {
       <SafeAreaView edges={["top", "left", "right"]} style={styles.safeArea}>
         <TopBar
           activeThread={chat.activeThread}
+          authStatus={chat.authStatus}
           conversationCount={chat.threads.length}
           isTyping={chat.isTyping}
           selectedModel={chat.selectedModel}
+          sessionUser={chat.sessionUser}
           onNewConversation={actions.startNewConversation}
+          onAccountPress={() => {
+            if (chat.authStatus === "authenticated") {
+              actions.setSettingsOpen(true);
+              return;
+            }
+
+            void actions.openLogin();
+          }}
           onOpenSettings={() => actions.setSettingsOpen(true)}
           onOpenSidebar={() => actions.setSidebarOpen(true)}
           onSelectModel={actions.setSelectedModel}
@@ -138,17 +148,22 @@ export default function Index() {
       />
 
       <SettingsSheet
+        authStatus={chat.authStatus}
         endpoint={QUANTUM_CHAT_API_URL}
         open={chat.settingsOpen}
         preferences={chat.preferences}
         selectedModel={chat.selectedModel}
+        sessionUser={chat.sessionUser}
         threadsCount={chat.threads.length}
         webSearchEnabled={chat.webSearchEnabled}
         onClearConversations={actions.clearConversations}
         onClose={() => actions.setSettingsOpen(false)}
+        onManageAccount={() => void actions.openAccount()}
         onPreferenceChange={actions.updatePreference}
         onResetPreferences={actions.resetPreferences}
         onSelectModel={actions.setSelectedModel}
+        onSignIn={() => void actions.openLogin()}
+        onSignOut={() => void actions.signOut()}
         onWebSearchChange={actions.setWebSearchEnabled}
       />
     </KeyboardAvoidingView>

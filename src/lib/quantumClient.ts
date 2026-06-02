@@ -23,6 +23,7 @@ export async function requestQuantumReply({
   preferences,
   selectedModel,
   signal,
+  userId,
   webSearchEnabled,
 }: {
   attachments: ImageAttachment[];
@@ -31,6 +32,7 @@ export async function requestQuantumReply({
   preferences: ChatPreferences;
   selectedModel: QuantumModel;
   signal: AbortSignal;
+  userId?: string;
   webSearchEnabled: boolean;
 }) {
   const response = await fetch(QUANTUM_CHAT_API_URL, {
@@ -39,6 +41,7 @@ export async function requestQuantumReply({
       Accept: "application/json",
       "Content-Type": "application/json",
       "x-chefu-app": "quantum",
+      ...(userId ? { "x-quantum-user-id": userId } : {}),
     },
     signal,
     body: JSON.stringify({

@@ -1,6 +1,7 @@
 export type Role = "user" | "assistant";
 export type ResponseStyle = "balanced" | "concise" | "detailed";
 export type ServiceTier = "standard" | "flex" | "priority";
+export type AuthStatus = "checking" | "authenticated" | "guest";
 export type MessageStatus =
   | "thinking"
   | "streaming"
@@ -15,6 +16,13 @@ export type ConversationFilter =
   | "failed"
   | "today"
   | "week";
+
+export type SessionUser = {
+  uid: string;
+  email: string;
+  displayName?: string;
+  roles?: string[];
+};
 
 export type ChatPreferences = {
   autoScroll: boolean;

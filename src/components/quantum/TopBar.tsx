@@ -3,27 +3,41 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { QuantumLogo } from "@/components/QuantumLogo";
 import { IconButton } from "@/components/quantum/IconButton";
 import { MODELS, type QuantumModel } from "@/constants/quantum";
-import type { ChatThread } from "@/types/quantum";
+import type { AuthStatus, ChatThread, SessionUser } from "@/types/quantum";
 
 export function TopBar({
   activeThread,
+  authStatus,
   conversationCount,
   isTyping,
   selectedModel,
+  sessionUser,
   onNewConversation,
+  onAccountPress,
   onOpenSettings,
   onOpenSidebar,
   onSelectModel,
 }: {
   activeThread?: ChatThread;
+  authStatus: AuthStatus;
   conversationCount: number;
   isTyping: boolean;
   selectedModel: QuantumModel;
+  sessionUser: SessionUser | null;
   onNewConversation: () => void;
+  onAccountPress: () => void;
   onOpenSettings: () => void;
   onOpenSidebar: () => void;
   onSelectModel: (model: QuantumModel) => void;
 }) {
+  const subtitle = isTyping
+    ? "Thinking"
+    : authStatus === "checking"
+      ? "Checking account"
+      : authStatus === "authenticated" && sessionUser
+        ? sessionUser.email
+        : `${conversationCount} local chats`;
+
   return (
     <View style={styles.topBar}>
       <IconButton icon="menu" label="Conversations" onPress={onOpenSidebar} />
@@ -33,10 +47,16 @@ export function TopBar({
           {activeThread?.title || "Quantum"}
         </Text>
         <Text numberOfLines={1} style={styles.appSubtitle}>
-          {isTyping ? "Thinking" : `${conversationCount} local chats`}
+          {subtitle}
         </Text>
       </View>
       <IconButton icon="add" label="New" onPress={onNewConversation} />
+      <IconButton
+        icon="account"
+        label={authStatus === "authenticated" ? "Account" : "Sign in"}
+        onPress={onAccountPress}
+        tint={authStatus === "authenticated" ? "#81c995" : "#8ab4f8"}
+      />
       <IconButton icon="settings" label="Settings" onPress={onOpenSettings} />
       <ScrollView
         horizontal

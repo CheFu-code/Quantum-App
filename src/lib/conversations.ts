@@ -1,5 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
+import { CHEFU_API_BASE } from "@/constants/quantum";
 import type { ChatThread, StoredThread } from "@/types/quantum";
 
 const STORAGE_KEY = "quantum-app-chat-threads";
@@ -107,4 +108,48 @@ export async function saveLocalConversations(threads: ChatThread[]) {
 
 export async function clearLocalConversations() {
   await AsyncStorage.removeItem(STORAGE_KEY);
+}
+
+export async function loadAccountConversations(accessToken: string) {
+  const response = await fetch(`${CHEFU_API_BASE}/quantum/conversations`, {
+    headers: accountHeaders(accessToken),
+  });
+
+  if (!response.ok) {
+    throw new Error("Could not load account conversations.");
+  }
+
+  const data = (await response.json().catch(() => null)) as {
+    conversations?: StoredThread[];
+  } | null;
+
+  return parseStoredThreads(JSON.stringify(data?.conversations || []));
+}
+
+export async function saveAccountConversations(
+  accessToken: string,
+  threads: ChatThread[],
+) {
+  const response = await fetch(`${CHEFU_API_BASE}/quantum/conversations`, {
+    body: JSON.stringify({
+      conversations: toStoredThreads(threads),
+    }),
+    headers: {
+      "Content-Type": "application/json",
+      ...accountHeaders(accessToken),
+    },
+    method: "PUT",
+  });
+
+  if (!response.ok) {
+    throw new Error("Could not save account conversations.");
+  }
+}
+
+function accountHeaders(accessToken: string) {
+  return {
+    Accept: "application/json",
+    Authorization: `Bearer ${accessToken}`,
+    "x-chefu-app": "quantum",
+  };
 }

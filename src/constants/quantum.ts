@@ -13,6 +13,9 @@ declare const process:
   | undefined;
 
 const DEFAULT_CHAT_API_URL = "https://quantum.chefuinc.com/api/chat";
+const DEFAULT_CHEFU_API_URL = "https://api.chefuinc.com";
+const DEFAULT_CHEFU_ACCOUNT_URL = "https://myaccount.chefuinc.com";
+const DEFAULT_QUANTUM_OAUTH_CLIENT_ID = "quantum-mobile";
 const configuredChatApiUrl =
   (typeof process !== "undefined"
     ? process.env?.EXPO_PUBLIC_QUANTUM_CHAT_API_URL
@@ -20,8 +23,40 @@ const configuredChatApiUrl =
   (Constants.expoConfig?.extra as { quantumChatApiUrl?: string } | undefined)
     ?.quantumChatApiUrl ||
   DEFAULT_CHAT_API_URL;
+const configuredChefuAccountUrl =
+  (typeof process !== "undefined"
+    ? process.env?.EXPO_PUBLIC_CHEFU_ACCOUNT_URL
+    : undefined) ||
+  (Constants.expoConfig?.extra as { chefuAccountUrl?: string } | undefined)
+    ?.chefuAccountUrl ||
+  DEFAULT_CHEFU_ACCOUNT_URL;
+const configuredChefuApiUrl =
+  (typeof process !== "undefined"
+    ? process.env?.EXPO_PUBLIC_CHEFU_API_URL
+    : undefined) ||
+  (Constants.expoConfig?.extra as { chefuApiUrl?: string } | undefined)
+    ?.chefuApiUrl ||
+  DEFAULT_CHEFU_API_URL;
+const configuredQuantumOauthClientId =
+  (typeof process !== "undefined"
+    ? process.env?.EXPO_PUBLIC_QUANTUM_OAUTH_CLIENT_ID
+    : undefined) ||
+  (Constants.expoConfig?.extra as { quantumOauthClientId?: string } | undefined)
+    ?.quantumOauthClientId ||
+  DEFAULT_QUANTUM_OAUTH_CLIENT_ID;
 
 export const QUANTUM_CHAT_API_URL = configuredChatApiUrl.trim();
+export const CHEFU_API_BASE = configuredChefuApiUrl.trim().replace(/\/$/, "");
+export const CHEFU_ACCOUNT_BASE = configuredChefuAccountUrl.trim().replace(/\/$/, "");
+export const CHEFU_ACCOUNT_MANAGE_HREF = `${CHEFU_ACCOUNT_BASE}/account`;
+export const QUANTUM_OAUTH_CLIENT_ID = configuredQuantumOauthClientId.trim();
+export const QUANTUM_OAUTH_SCOPES = [
+  "openid",
+  "profile",
+  "email",
+  "quantum:chat",
+  "quantum:read",
+];
 export const MAX_ATTACHMENTS = 6;
 export const MAX_ATTACHMENT_SIZE = 10 * 1024 * 1024;
 

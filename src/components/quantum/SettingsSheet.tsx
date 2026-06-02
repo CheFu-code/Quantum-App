@@ -17,38 +17,56 @@ import {
   RESPONSE_STYLES,
   type QuantumModel,
 } from "@/constants/quantum";
-import type { ChatPreferences, ServiceTier } from "@/types/quantum";
+import type {
+  AuthStatus,
+  ChatPreferences,
+  ServiceTier,
+  SessionUser,
+} from "@/types/quantum";
 
 export function SettingsSheet({
+  authStatus,
   endpoint,
   open,
   preferences,
   selectedModel,
+  sessionUser,
   threadsCount,
   webSearchEnabled,
   onClearConversations,
   onClose,
+  onManageAccount,
   onPreferenceChange,
   onResetPreferences,
   onSelectModel,
+  onSignIn,
+  onSignOut,
   onWebSearchChange,
 }: {
+  authStatus: AuthStatus;
   endpoint: string;
   open: boolean;
   preferences: ChatPreferences;
   selectedModel: QuantumModel;
+  sessionUser: SessionUser | null;
   threadsCount: number;
   webSearchEnabled: boolean;
   onClearConversations: () => void;
   onClose: () => void;
+  onManageAccount: () => void;
   onPreferenceChange: <Key extends keyof ChatPreferences>(
     key: Key,
     value: ChatPreferences[Key],
   ) => void;
   onResetPreferences: () => void;
   onSelectModel: (model: QuantumModel) => void;
+  onSignIn: () => void;
+  onSignOut: () => void;
   onWebSearchChange: (value: boolean) => void;
 }) {
+  const signedInUser =
+    authStatus === "authenticated" && sessionUser ? sessionUser : null;
+
   return (
     <Modal animationType="slide" transparent visible={open}>
       <View style={styles.sheetOverlay}>
@@ -59,6 +77,49 @@ export function SettingsSheet({
             <IconButton icon="close" label="Close" onPress={onClose} />
           </View>
           <ScrollView showsVerticalScrollIndicator={false}>
+            <SectionLabel label="Account" />
+            <View style={styles.accountBox}>
+              <Text style={styles.accountTitle}>
+                {signedInUser
+                  ? signedInUser.displayName || "CheFu Account"
+                  : "CheFu Account"}
+              </Text>
+              <Text style={styles.accountDescription}>
+                {authStatus === "checking"
+                  ? "Checking your CheFu account session."
+                  : signedInUser
+                    ? signedInUser.email
+                    : "Sign in to sync Quantum conversations with your CheFu account."}
+              </Text>
+              {signedInUser ? (
+                <>
+                  <Pressable
+                    onPress={onManageAccount}
+                    style={styles.primaryAction}
+                  >
+                    <Text style={styles.primaryActionText}>Manage account</Text>
+                  </Pressable>
+                  <Pressable onPress={onSignOut} style={styles.secondaryAction}>
+                    <Text style={styles.secondaryActionText}>Sign out</Text>
+                  </Pressable>
+                </>
+              ) : (
+                <>
+                  <Pressable onPress={onSignIn} style={styles.primaryAction}>
+                    <Text style={styles.primaryActionText}>Sign in</Text>
+                  </Pressable>
+                  <Pressable
+                    onPress={onManageAccount}
+                    style={styles.secondaryAction}
+                  >
+                    <Text style={styles.secondaryActionText}>
+                      Manage account
+                    </Text>
+                  </Pressable>
+                </>
+              )}
+            </View>
+
             <SectionLabel label="Model" />
             <View style={styles.segmentGroup}>
               {MODELS.map((model) => (
@@ -220,6 +281,25 @@ export function SettingsSheet({
 }
 
 const styles = StyleSheet.create({
+  accountBox: {
+    backgroundColor: "rgba(138, 180, 248, 0.1)",
+    borderColor: "rgba(138, 180, 248, 0.22)",
+    borderRadius: 16,
+    borderWidth: 1,
+    padding: 13,
+  },
+  accountDescription: {
+    color: "#8a93a5",
+    fontSize: 12,
+    lineHeight: 17,
+    marginBottom: 12,
+  },
+  accountTitle: {
+    color: "#f4f7fb",
+    fontSize: 15,
+    fontWeight: "900",
+    marginBottom: 5,
+  },
   activeSegmentButton: {
     backgroundColor: "rgba(138, 180, 248, 0.16)",
     borderColor: "#8ab4f8",
@@ -257,6 +337,17 @@ const styles = StyleSheet.create({
     color: "#d6dbe6",
     fontSize: 12,
     lineHeight: 17,
+  },
+  primaryAction: {
+    alignItems: "center",
+    backgroundColor: "#8ab4f8",
+    borderRadius: 14,
+    marginBottom: 9,
+    padding: 13,
+  },
+  primaryActionText: {
+    color: "#0d0f14",
+    fontWeight: "900",
   },
   secondaryAction: {
     alignItems: "center",

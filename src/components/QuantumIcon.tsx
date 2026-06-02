@@ -3,6 +3,7 @@ import { StyleSheet, Text } from "react-native";
 
 const ICONS = {
   add: { ios: "plus", android: "add", web: "add" },
+  account: { ios: "person.circle", android: "account_circle", web: "account_circle" },
   attach: { ios: "paperclip", android: "attach_file", web: "attach_file" },
   brain: {
     ios: "brain.head.profile",
@@ -54,6 +55,7 @@ const ICONS = {
 
 const FALLBACKS: Record<QuantumIconName, string> = {
   add: "+",
+  account: "U",
   attach: "@",
   brain: "*",
   chevron: ">",

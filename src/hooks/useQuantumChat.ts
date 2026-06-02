@@ -7,11 +7,14 @@ import {
   type QuantumModel,
 } from "@/constants/quantum";
 import {
+  loadAccountConversations,
   loadLocalConversations,
+  saveAccountConversations,
   saveLocalConversations,
   sortThreads,
 } from "@/lib/conversations";
 import { matchesConversationFilter } from "@/lib/quantumPresentation";
+import { useQuantumAuth } from "@/hooks/useQuantumAuth";
 import { useQuantumChatActions } from "@/hooks/useQuantumChatActions";
 import type {
   ChatPreferences,
@@ -48,6 +51,8 @@ export function useQuantumChat() {
   const [notice, setNotice] = useState("");
   const listRef = useRef<FlatList<Message>>(null);
   const activeRequestRef = useRef<ActiveRequest | null>(null);
+  const threadsRef = useRef<ChatThread[]>([]);
+  const auth = useQuantumAuth();
 
   const activeThread = useMemo(
     () => threads.find((thread) => thread.id === activeThreadId),
@@ -63,26 +68,53 @@ export function useQuantumChat() {
   );
 
   useEffect(() => {
+    threadsRef.current = threads;
+  }, [threads]);
+
+  useEffect(() => {
+    if (auth.authStatus === "checking") return;
+
     let mounted = true;
 
-    loadLocalConversations()
-      .then((savedThreads) => {
+    async function loadConversations() {
+      setHydrated(false);
+
+      try {
+        const localThreads = await loadLocalConversations();
+        const fallbackThreads =
+          localThreads.length > 0 ? localThreads : threadsRef.current;
+        const savedThreads =
+          auth.authStatus === "authenticated" && auth.accessToken
+            ? await loadAccountConversations(auth.accessToken).then(
+                (accountThreads) =>
+                  accountThreads.length > 0 ? accountThreads : fallbackThreads,
+              )
+            : fallbackThreads;
+
         if (!mounted) return;
         setThreads(savedThreads);
         setActiveThreadId(savedThreads[0]?.id || "");
-      })
-      .catch(() => {
+      } catch {
         if (!mounted) return;
-        setNotice("Could not load saved conversations.");
-      })
-      .finally(() => {
+        const fallbackThreads = threadsRef.current;
+        setThreads(fallbackThreads);
+        setActiveThreadId(fallbackThreads[0]?.id || "");
+        setNotice(
+          auth.authStatus === "authenticated"
+            ? "Could not load account conversations."
+            : "Could not load saved conversations.",
+        );
+      } finally {
         if (mounted) setHydrated(true);
-      });
+      }
+    }
+
+    void loadConversations();
 
     return () => {
       mounted = false;
     };
-  }, []);
+  }, [auth.accessToken, auth.authStatus, auth.sessionUser?.uid]);
 
   useEffect(() => {
     if (!hydrated || isTyping || !preferences.saveConversations) return;
@@ -91,10 +123,27 @@ export function useQuantumChat() {
       saveLocalConversations(threads).catch(() => {
         setNotice("Could not save conversations.");
       });
+
+      if (auth.authStatus === "authenticated" && auth.accessToken) {
+        saveAccountConversations(auth.accessToken, threads).catch(() => {
+          setNotice("Could not sync account conversations.");
+        });
+      }
     }, 600);
 
     return () => clearTimeout(timeout);
-  }, [hydrated, isTyping, preferences.saveConversations, threads]);
+  }, [
+    auth.accessToken,
+    auth.authStatus,
+    hydrated,
+    isTyping,
+    preferences.saveConversations,
+    threads,
+  ]);
+
+  useEffect(() => {
+    if (auth.authNotice) setNotice(auth.authNotice);
+  }, [auth.authNotice]);
 
   useEffect(() => {
     if (!preferences.autoScroll || messages.length === 0) return;
@@ -115,6 +164,7 @@ export function useQuantumChat() {
     isTyping,
     preferences,
     selectedModel,
+    sessionUser: auth.sessionUser,
     setActiveThreadId,
     setAttachments,
     setConversationFilter,
@@ -131,6 +181,9 @@ export function useQuantumChat() {
     setWebSearchEnabled,
     threads,
     webSearchEnabled,
+    onOpenAccount: auth.openAccount,
+    onSignIn: auth.signIn,
+    onSignOut: auth.signOut,
   });
 
   return {
@@ -154,5 +207,7 @@ export function useQuantumChat() {
     threads,
     webSearchEnabled,
     actions,
+    authStatus: auth.authStatus,
+    sessionUser: auth.sessionUser,
   };
 }
