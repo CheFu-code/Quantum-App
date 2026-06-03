@@ -130,19 +130,58 @@ export async function saveAccountConversations(
   accessToken: string,
   threads: ChatThread[],
 ) {
-  const response = await fetch(`${CHEFU_API_BASE}/quantum/conversations`, {
-    body: JSON.stringify({
-      conversations: toStoredThreads(threads),
+  if (threads.length === 0) {
+    const response = await fetch(`${CHEFU_API_BASE}/quantum/conversations`, {
+      body: JSON.stringify({ conversations: [] }),
+      headers: {
+        "Content-Type": "application/json",
+        ...accountHeaders(accessToken),
+      },
+      method: "PUT",
+    });
+
+    if (!response.ok) {
+      throw new Error("Could not clear account conversations.");
+    }
+
+    return;
+  }
+
+  await Promise.all(
+    toStoredThreads(threads).map(async (conversation) => {
+      const response = await fetch(
+        `${CHEFU_API_BASE}/quantum/conversations/${encodeURIComponent(conversation.id)}`,
+        {
+          body: JSON.stringify({ conversation }),
+          headers: {
+            "Content-Type": "application/json",
+            ...accountHeaders(accessToken),
+          },
+          method: "PUT",
+        },
+      );
+
+      if (!response.ok) {
+        throw new Error("Could not save account conversations.");
+      }
     }),
-    headers: {
-      "Content-Type": "application/json",
-      ...accountHeaders(accessToken),
+  );
+}
+
+export async function deleteAccountConversation(
+  accessToken: string,
+  threadId: string,
+) {
+  const response = await fetch(
+    `${CHEFU_API_BASE}/quantum/conversations/${encodeURIComponent(threadId)}`,
+    {
+      headers: accountHeaders(accessToken),
+      method: "DELETE",
     },
-    method: "PUT",
-  });
+  );
 
   if (!response.ok) {
-    throw new Error("Could not save account conversations.");
+    throw new Error("Could not delete account conversation.");
   }
 }
 

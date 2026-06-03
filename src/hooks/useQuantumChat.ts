@@ -156,6 +156,7 @@ export function useQuantumChat() {
   }, [messages.length, preferences.autoScroll]);
 
   const actions = useQuantumChatActions({
+    accessToken: auth.accessToken,
     activeRequestRef,
     activeThread,
     activeThreadId,
@@ -164,7 +165,6 @@ export function useQuantumChat() {
     isTyping,
     preferences,
     selectedModel,
-    sessionUser: auth.sessionUser,
     setActiveThreadId,
     setAttachments,
     setConversationFilter,

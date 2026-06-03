@@ -8,7 +8,10 @@ import {
   type QuantumModel,
 } from "@/constants/quantum";
 import { pickQuantumAttachments } from "@/lib/attachments";
-import { clearLocalConversations } from "@/lib/conversations";
+import {
+  clearLocalConversations,
+  deleteAccountConversation,
+} from "@/lib/conversations";
 import { requestQuantumReply } from "@/lib/quantumClient";
 import {
   applyMessageFeedback,
@@ -28,7 +31,6 @@ import type {
   ImageAttachment,
   Message,
   MessageFeedbackRating,
-  SessionUser,
 } from "@/types/quantum";
 
 type ActiveRequest = {
@@ -40,6 +42,7 @@ type ActiveRequest = {
 type StateSetter<T> = Dispatch<SetStateAction<T>>;
 
 export function useQuantumChatActions({
+  accessToken,
   activeRequestRef,
   activeThread,
   activeThreadId,
@@ -48,7 +51,6 @@ export function useQuantumChatActions({
   isTyping,
   preferences,
   selectedModel,
-  sessionUser,
   setActiveThreadId,
   setAttachments,
   setConversationFilter,
@@ -69,6 +71,7 @@ export function useQuantumChatActions({
   onSignIn,
   onSignOut,
 }: {
+  accessToken?: string;
   activeRequestRef: MutableRefObject<ActiveRequest | null>;
   activeThread?: ChatThread;
   activeThreadId: string;
@@ -77,7 +80,6 @@ export function useQuantumChatActions({
   isTyping: boolean;
   preferences: ChatPreferences;
   selectedModel: QuantumModel;
-  sessionUser: SessionUser | null;
   setActiveThreadId: StateSetter<string>;
   setAttachments: StateSetter<ImageAttachment[]>;
   setConversationFilter: StateSetter<ConversationFilter>;
@@ -145,13 +147,13 @@ export function useQuantumChatActions({
 
     try {
       const response = await requestQuantumReply({
+        accessToken,
         attachments: activeAttachments,
         message: messageText,
         messages: priorMessages,
         preferences,
         selectedModel,
         signal: controller.signal,
-        userId: sessionUser?.uid,
         webSearchEnabled,
       });
 
@@ -226,13 +228,13 @@ export function useQuantumChatActions({
 
     try {
       const response = await requestQuantumReply({
+        accessToken,
         attachments: userMessage.attachments || [],
         message: userMessage.content,
         messages: previousMessages.slice(0, -1),
         preferences,
         selectedModel,
         signal: controller.signal,
-        userId: sessionUser?.uid,
         webSearchEnabled,
       });
 
@@ -322,6 +324,11 @@ export function useQuantumChatActions({
   function deleteThread(threadId: string) {
     const nextThreads = threads.filter((thread) => thread.id !== threadId);
     setThreads(nextThreads);
+    if (accessToken) {
+      deleteAccountConversation(accessToken, threadId).catch(() => {
+        setNotice("Could not delete account conversation.");
+      });
+    }
     if (activeThreadId === threadId) {
       setActiveThreadId(nextThreads[0]?.id || "");
     }
