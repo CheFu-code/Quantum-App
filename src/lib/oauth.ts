@@ -30,11 +30,17 @@ type OAuthUserInfo = {
 };
 
 export async function startQuantumSignIn() {
+  const nonce = randomOAuthParam(32);
+  const state = randomOAuthParam(32);
   const request = new AuthSession.AuthRequest({
     clientId: QUANTUM_OAUTH_CLIENT_ID,
+    extraParams: {
+      nonce,
+    },
     redirectUri: QUANTUM_AUTH_REDIRECT_URI,
     responseType: AuthSession.ResponseType.Code,
     scopes: QUANTUM_OAUTH_SCOPES,
+    state,
     usePKCE: true,
   });
 
@@ -63,6 +69,7 @@ export async function startQuantumSignIn() {
     },
     AUTH_DISCOVERY,
   );
+  validateIdTokenClaims(tokenResponse.idToken, nonce);
   const userInfo = await fetchQuantumUserInfo(tokenResponse.accessToken);
   const user = normalizeSessionUser(userInfo);
 
@@ -107,4 +114,73 @@ function normalizeSessionUser(userInfo: OAuthUserInfo): SessionUser | null {
       : [],
     uid,
   };
+}
+
+function validateIdTokenClaims(idToken: string | null | undefined, nonce: string) {
+  if (!idToken) {
+    throw new Error("CheFu Account did not return an ID token.");
+  }
+
+  const claims = parseJwtPayload(idToken);
+  const now = Math.floor(Date.now() / 1000);
+  const issuer = CHEFU_API_BASE.replace(/\/$/, "");
+
+  if (
+    claims.iss !== issuer ||
+    claims.aud !== QUANTUM_OAUTH_CLIENT_ID ||
+    claims.nonce !== nonce ||
+    claims.typ !== "id_token" ||
+    typeof claims.sub !== "string" ||
+    !claims.sub ||
+    typeof claims.exp !== "number" ||
+    typeof claims.iat !== "number" ||
+    claims.exp <= now ||
+    claims.iat > now + 60
+  ) {
+    throw new Error("CheFu Account returned an invalid ID token.");
+  }
+}
+
+function parseJwtPayload(token: string) {
+  const [, payload] = token.split(".");
+
+  if (!payload) {
+    throw new Error("CheFu Account returned a malformed ID token.");
+  }
+
+  try {
+    return JSON.parse(decodeBase64Url(payload)) as Record<string, unknown>;
+  } catch {
+    throw new Error("CheFu Account returned a malformed ID token.");
+  }
+}
+
+function decodeBase64Url(value: string) {
+  if (typeof globalThis.atob !== "function") {
+    throw new Error("This device cannot validate the CheFu ID token.");
+  }
+
+  const base64 = value.replace(/-/g, "+").replace(/_/g, "/");
+  const padded = base64.padEnd(Math.ceil(base64.length / 4) * 4, "=");
+  const binary = globalThis.atob(padded);
+  const bytes = Array.from(binary, character =>
+    `%${character.charCodeAt(0).toString(16).padStart(2, "0")}`,
+  ).join("");
+
+  return decodeURIComponent(bytes);
+}
+
+function randomOAuthParam(size: number) {
+  const cryptoApi = globalThis.crypto;
+
+  if (!cryptoApi?.getRandomValues) {
+    throw new Error("This device cannot create a secure sign-in challenge.");
+  }
+
+  const alphabet =
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789._~-";
+  const bytes = new Uint8Array(size);
+  cryptoApi.getRandomValues(bytes);
+
+  return Array.from(bytes, byte => alphabet[byte % alphabet.length]).join("");
 }
