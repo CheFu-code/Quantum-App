@@ -40,25 +40,28 @@ export function TopBar({
 
   return (
     <View style={styles.topBar}>
-      <IconButton icon="menu" label="Conversations" onPress={onOpenSidebar} />
-      <QuantumLogo size={34} />
-      <View style={styles.topTitleBlock}>
-        <Text numberOfLines={1} style={styles.appTitle}>
-          {activeThread?.title || "Quantum"}
-        </Text>
-        <Text numberOfLines={1} style={styles.appSubtitle}>
-          {subtitle}
-        </Text>
+      <View style={styles.topRow}>
+        <IconButton icon="menu" label="Conversations" onPress={onOpenSidebar} />
+        <QuantumLogo size={34} />
+        <View style={styles.topTitleBlock}>
+          <Text numberOfLines={1} style={styles.appTitle}>
+            {activeThread?.title || "Quantum"}
+          </Text>
+          <Text numberOfLines={1} style={styles.appSubtitle}>
+            {subtitle}
+          </Text>
+        </View>
+        <IconButton icon="add" label="New" onPress={onNewConversation} />
+        <IconButton
+          icon="account"
+          label={authStatus === "authenticated" ? "Account" : "Sign in"}
+          onPress={onAccountPress}
+          tint={authStatus === "authenticated" ? "#81c995" : "#8ab4f8"}
+        />
+        <IconButton icon="settings" label="Settings" onPress={onOpenSettings} />
       </View>
-      <IconButton icon="add" label="New" onPress={onNewConversation} />
-      <IconButton
-        icon="account"
-        label={authStatus === "authenticated" ? "Account" : "Sign in"}
-        onPress={onAccountPress}
-        tint={authStatus === "authenticated" ? "#81c995" : "#8ab4f8"}
-      />
-      <IconButton icon="settings" label="Settings" onPress={onOpenSettings} />
       <ScrollView
+        contentContainerStyle={styles.modelRailContent}
         horizontal
         showsHorizontalScrollIndicator={false}
         style={styles.modelRail}
@@ -108,7 +111,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     height: 28,
     justifyContent: "center",
-    marginLeft: 6,
     paddingHorizontal: 10,
   },
   modelChipText: {
@@ -117,15 +119,25 @@ const styles = StyleSheet.create({
     fontWeight: "800",
   },
   modelRail: {
-    display: "none",
+    marginTop: 2,
+    maxHeight: 32,
+    width: "100%",
+  },
+  modelRailContent: {
+    gap: 7,
+    paddingBottom: 8,
+    paddingHorizontal: 12,
   },
   topBar: {
-    alignItems: "center",
     borderBottomColor: "rgba(255, 255, 255, 0.06)",
     borderBottomWidth: 1,
+    minHeight: 96,
+    paddingTop: 8,
+  },
+  topRow: {
+    alignItems: "center",
     flexDirection: "row",
     gap: 9,
-    minHeight: 62,
     paddingHorizontal: 12,
   },
   topTitleBlock: {

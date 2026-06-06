@@ -1,11 +1,11 @@
 import type { QuantumIconName } from "@/components/QuantumIcon";
 import type { ConversationFilter } from "@/types/quantum";
 
-export const SUGGESTIONS: Array<{
+export const SUGGESTIONS: {
   icon: QuantumIconName;
   label: string;
   tint: string;
-}> = [
+}[] = [
   {
     icon: "brain",
     label: "Explain dark matter",
@@ -28,10 +28,10 @@ export const SUGGESTIONS: Array<{
   },
 ];
 
-export const CONVERSATION_FILTERS: Array<{
+export const CONVERSATION_FILTERS: {
   id: ConversationFilter;
   label: string;
-}> = [
+}[] = [
   { id: "all", label: "All" },
   { id: "starred", label: "Starred" },
   { id: "today", label: "Today" },

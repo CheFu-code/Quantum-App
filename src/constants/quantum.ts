@@ -130,19 +130,19 @@ export const MODELS = [
 
 export type QuantumModel = (typeof MODELS)[number];
 
-export const RESPONSE_STYLES: Array<{
+export const RESPONSE_STYLES: {
   id: ResponseStyle;
   label: string;
-}> = [
+}[] = [
   { id: "concise", label: "Concise" },
   { id: "balanced", label: "Balanced" },
   { id: "detailed", label: "Detailed" },
 ];
 
-export const INFERENCE_TIERS: Array<{
+export const INFERENCE_TIERS: {
   id: ServiceTier;
   label: string;
-}> = [
+}[] = [
   { id: "standard", label: "Standard" },
   { id: "flex", label: "Flex" },
   { id: "priority", label: "Priority" },

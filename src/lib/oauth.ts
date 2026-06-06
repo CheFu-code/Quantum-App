@@ -1,4 +1,5 @@
 import * as AuthSession from "expo-auth-session";
+import * as Crypto from "expo-crypto";
 import * as WebBrowser from "expo-web-browser";
 
 import {
@@ -30,8 +31,8 @@ type OAuthUserInfo = {
 };
 
 export async function startQuantumSignIn() {
-  const nonce = randomOAuthParam(32);
-  const state = randomOAuthParam(32);
+  const nonce = await randomOAuthParam(32);
+  const state = await randomOAuthParam(32);
   const request = new AuthSession.AuthRequest({
     clientId: QUANTUM_OAUTH_CLIENT_ID,
     extraParams: {
@@ -156,13 +157,12 @@ function parseJwtPayload(token: string) {
 }
 
 function decodeBase64Url(value: string) {
-  if (typeof globalThis.atob !== "function") {
-    throw new Error("This device cannot validate the CheFu ID token.");
-  }
-
   const base64 = value.replace(/-/g, "+").replace(/_/g, "/");
   const padded = base64.padEnd(Math.ceil(base64.length / 4) * 4, "=");
-  const binary = globalThis.atob(padded);
+  const binary =
+    typeof globalThis.atob === "function"
+      ? globalThis.atob(padded)
+      : decodeBase64(padded);
   const bytes = Array.from(binary, character =>
     `%${character.charCodeAt(0).toString(16).padStart(2, "0")}`,
   ).join("");
@@ -170,17 +170,35 @@ function decodeBase64Url(value: string) {
   return decodeURIComponent(bytes);
 }
 
-function randomOAuthParam(size: number) {
-  const cryptoApi = globalThis.crypto;
-
-  if (!cryptoApi?.getRandomValues) {
-    throw new Error("This device cannot create a secure sign-in challenge.");
-  }
-
+async function randomOAuthParam(size: number) {
   const alphabet =
     "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789._~-";
-  const bytes = new Uint8Array(size);
-  cryptoApi.getRandomValues(bytes);
+  const bytes = await Crypto.getRandomBytesAsync(size);
 
   return Array.from(bytes, byte => alphabet[byte % alphabet.length]).join("");
+}
+
+function decodeBase64(value: string) {
+  const alphabet =
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+  let buffer = 0;
+  let bits = 0;
+  let output = "";
+
+  for (const character of value.replace(/=+$/, "")) {
+    const index = alphabet.indexOf(character);
+    if (index === -1) {
+      throw new Error("CheFu Account returned a malformed ID token.");
+    }
+
+    buffer = (buffer << 6) | index;
+    bits += 6;
+
+    if (bits >= 8) {
+      bits -= 8;
+      output += String.fromCharCode((buffer >> bits) & 0xff);
+    }
+  }
+
+  return output;
 }
