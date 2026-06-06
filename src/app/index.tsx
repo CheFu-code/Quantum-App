@@ -107,6 +107,7 @@ export default function Index() {
             chat.messages.length === 0 && styles.emptyMessagesContent,
           ]}
           data={chat.messages}
+          initialNumToRender={8}
           keyExtractor={(item) => item.id}
           keyboardShouldPersistTaps="handled"
           ListEmptyComponent={
@@ -119,7 +120,11 @@ export default function Index() {
               <EmptyState isLoading onSuggestion={() => undefined} />
             )
           }
+          maxToRenderPerBatch={6}
+          removeClippedSubviews={Platform.OS === "android"}
           renderItem={renderMessage}
+          updateCellsBatchingPeriod={40}
+          windowSize={9}
         />
 
         <ChatComposer

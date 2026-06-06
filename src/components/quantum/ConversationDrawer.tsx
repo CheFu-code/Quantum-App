@@ -1,4 +1,6 @@
+import { memo, useCallback } from "react";
 import {
+  FlatList,
   Modal,
   Pressable,
   ScrollView,
@@ -6,6 +8,7 @@ import {
   Text,
   TextInput,
   View,
+  type ListRenderItemInfo,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -47,6 +50,19 @@ export function ConversationDrawer({
   onSelectThread: (threadId: string) => void;
   onToggleStar: (threadId: string) => void;
 }) {
+  const renderThread = useCallback(
+    ({ item }: ListRenderItemInfo<ChatThread>) => (
+      <ThreadRow
+        active={activeThreadId === item.id}
+        thread={item}
+        onDeleteThread={onDeleteThread}
+        onSelectThread={onSelectThread}
+        onToggleStar={onToggleStar}
+      />
+    ),
+    [activeThreadId, onDeleteThread, onSelectThread, onToggleStar],
+  );
+
   return (
     <Modal animationType="slide" transparent visible={open}>
       <View style={styles.modalOverlay}>
@@ -106,56 +122,73 @@ export function ConversationDrawer({
               </Pressable>
             ))}
           </ScrollView>
-          <ScrollView style={styles.threadList}>
-            {threads.length === 0 ? (
+          <FlatList
+            contentContainerStyle={
+              threads.length === 0 && styles.emptyThreadList
+            }
+            data={threads}
+            initialNumToRender={10}
+            keyExtractor={(thread) => thread.id}
+            ListEmptyComponent={
               <Text style={styles.emptyThreadText}>No conversations found.</Text>
-            ) : (
-              threads.map((thread) => (
-                <View
-                  key={thread.id}
-                  style={[
-                    styles.threadItem,
-                    activeThreadId === thread.id && styles.activeThreadItem,
-                  ]}
-                >
-                  <Pressable
-                    onPress={() => onSelectThread(thread.id)}
-                    style={styles.threadMain}
-                  >
-                    <Text numberOfLines={1} style={styles.threadTitle}>
-                      {thread.title}
-                    </Text>
-                    <Text numberOfLines={2} style={styles.threadPreview}>
-                      {thread.preview || "New conversation"}
-                    </Text>
-                    <Text style={styles.threadTime}>
-                      {formatTime(thread.timestamp)}
-                    </Text>
-                  </Pressable>
-                  <View style={styles.threadActions}>
-                    <IconButton
-                      icon={thread.starred ? "starFilled" : "star"}
-                      label="Star"
-                      onPress={() => onToggleStar(thread.id)}
-                      tint={thread.starred ? "#fdd663" : "#8a93a5"}
-                    />
-                    <IconButton
-                      icon="delete"
-                      label="Delete"
-                      onPress={() => onDeleteThread(thread.id)}
-                      tint="#f28b82"
-                    />
-                  </View>
-                </View>
-              ))
-            )}
-          </ScrollView>
+            }
+            maxToRenderPerBatch={8}
+            renderItem={renderThread}
+            style={styles.threadList}
+            updateCellsBatchingPeriod={40}
+            windowSize={7}
+          />
         </SafeAreaView>
         <Pressable onPress={onClose} style={styles.drawerDismiss} />
       </View>
     </Modal>
   );
 }
+
+const ThreadRow = memo(function ThreadRow({
+  active,
+  thread,
+  onDeleteThread,
+  onSelectThread,
+  onToggleStar,
+}: {
+  active: boolean;
+  thread: ChatThread;
+  onDeleteThread: (threadId: string) => void;
+  onSelectThread: (threadId: string) => void;
+  onToggleStar: (threadId: string) => void;
+}) {
+  return (
+    <View style={[styles.threadItem, active && styles.activeThreadItem]}>
+      <Pressable
+        onPress={() => onSelectThread(thread.id)}
+        style={styles.threadMain}
+      >
+        <Text numberOfLines={1} style={styles.threadTitle}>
+          {thread.title}
+        </Text>
+        <Text numberOfLines={2} style={styles.threadPreview}>
+          {thread.preview || "New conversation"}
+        </Text>
+        <Text style={styles.threadTime}>{formatTime(thread.timestamp)}</Text>
+      </Pressable>
+      <View style={styles.threadActions}>
+        <IconButton
+          icon={thread.starred ? "starFilled" : "star"}
+          label="Star"
+          onPress={() => onToggleStar(thread.id)}
+          tint={thread.starred ? "#fdd663" : "#8a93a5"}
+        />
+        <IconButton
+          icon="delete"
+          label="Delete"
+          onPress={() => onDeleteThread(thread.id)}
+          tint="#f28b82"
+        />
+      </View>
+    </View>
+  );
+});
 
 const styles = StyleSheet.create({
   activeFilterChip: {
@@ -209,6 +242,9 @@ const styles = StyleSheet.create({
     fontSize: 13,
     padding: 18,
     textAlign: "center",
+  },
+  emptyThreadList: {
+    flexGrow: 1,
   },
   filterChip: {
     borderColor: "rgba(255, 255, 255, 0.08)",

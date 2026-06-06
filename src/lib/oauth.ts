@@ -8,6 +8,7 @@ import {
   QUANTUM_OAUTH_SCOPES,
 } from "@/constants/quantum";
 import type { StoredAuthSession } from "@/lib/authStorage";
+import { assertSecureBackendUrl } from "@/lib/secureTransport";
 import type { SessionUser } from "@/types/quantum";
 
 WebBrowser.maybeCompleteAuthSession();
@@ -34,6 +35,7 @@ type OAuthUserInfo = {
 };
 
 export async function startQuantumSignIn() {
+  assertTrustedDiscovery();
   const nonce = await randomOAuthParam(32);
   const state = await randomOAuthParam(32);
   const request = new AuthSession.AuthRequest({
@@ -105,6 +107,7 @@ export async function startQuantumSignIn() {
 
 export async function refreshQuantumSession(session: StoredAuthSession) {
   if (!session.refreshToken) return null;
+  assertTrustedDiscovery();
 
   const tokenResponse = await AuthSession.refreshAsync(
     {
@@ -141,6 +144,7 @@ export async function refreshQuantumSession(session: StoredAuthSession) {
 export async function revokeQuantumSession(session: StoredAuthSession | null) {
   const token = session?.refreshToken || session?.accessToken;
   if (!token) return;
+  assertTrustedDiscovery();
 
   await AuthSession.revokeAsync(
     {
@@ -155,10 +159,18 @@ export async function revokeQuantumSession(session: StoredAuthSession | null) {
 }
 
 export async function fetchQuantumUserInfo(accessToken: string) {
+  assertSecureBackendUrl(AUTH_DISCOVERY.userInfoEndpoint);
   return AuthSession.fetchUserInfoAsync(
     { accessToken },
     AUTH_DISCOVERY,
   ) as Promise<OAuthUserInfo>;
+}
+
+function assertTrustedDiscovery() {
+  assertSecureBackendUrl(AUTH_DISCOVERY.authorizationEndpoint);
+  assertSecureBackendUrl(AUTH_DISCOVERY.revocationEndpoint);
+  assertSecureBackendUrl(AUTH_DISCOVERY.tokenEndpoint);
+  assertSecureBackendUrl(AUTH_DISCOVERY.userInfoEndpoint);
 }
 
 function normalizeSessionUser(userInfo: OAuthUserInfo): SessionUser | null {

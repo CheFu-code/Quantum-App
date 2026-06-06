@@ -2,6 +2,7 @@ import {
   QUANTUM_CHAT_API_URL,
   type QuantumModel,
 } from "@/constants/quantum";
+import { assertSecureBackendUrl } from "@/lib/secureTransport";
 import type {
   ChatPreferences,
   ImageAttachment,
@@ -37,6 +38,7 @@ export async function requestQuantumReply({
   signal: AbortSignal;
   webSearchEnabled: boolean;
 }) {
+  assertSecureBackendUrl(QUANTUM_CHAT_API_URL);
   const requestSignal = createTimeoutSignal(signal, QUANTUM_REQUEST_TIMEOUT_MS);
   let response: Response;
 

@@ -1,5 +1,6 @@
 import * as WebBrowser from "expo-web-browser";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { AppState } from "react-native";
 
 import { CHEFU_ACCOUNT_MANAGE_HREF } from "@/constants/quantum";
 import {
@@ -21,42 +22,53 @@ export function useQuantumAuth() {
   const [authStatus, setAuthStatus] = useState<AuthStatus>("checking");
   const [authNotice, setAuthNotice] = useState("");
 
-  useEffect(() => {
-    let mounted = true;
+  const restoreStoredSession = useCallback(async () => {
+    setAuthStatus("checking");
 
-    loadStoredAuthSession()
-      .then(async (storedSession) => {
-        if (!mounted) return;
+    try {
+      const storedSession = await loadStoredAuthSession();
 
-        if (!isStoredAuthSessionFresh(storedSession)) {
-          const refreshedSession = await refreshStoredSession(storedSession);
-          if (!mounted) return;
+      if (!isStoredAuthSessionFresh(storedSession)) {
+        const refreshedSession = await refreshStoredSession(storedSession);
 
-          if (refreshedSession) {
-            setSession(refreshedSession);
-            setAuthStatus("authenticated");
-            return;
-          }
-
-          setSession(null);
-          setAuthStatus("guest");
-          if (storedSession) void clearStoredAuthSession();
+        if (refreshedSession) {
+          setSession(refreshedSession);
+          setAuthStatus("authenticated");
           return;
         }
 
-        setSession(storedSession);
-        setAuthStatus("authenticated");
-      })
-      .catch(() => {
-        if (!mounted) return;
         setSession(null);
         setAuthStatus("guest");
-      });
+        if (storedSession) void clearStoredAuthSession();
+        return;
+      }
 
-    return () => {
-      mounted = false;
-    };
+      setSession(storedSession);
+      setAuthStatus("authenticated");
+    } catch {
+      setSession(null);
+      setAuthStatus("guest");
+    }
   }, []);
+
+  useEffect(() => {
+    void restoreStoredSession();
+  }, [restoreStoredSession]);
+
+  useEffect(() => {
+    const subscription = AppState.addEventListener("change", (nextState) => {
+      if (nextState === "active") {
+        void restoreStoredSession();
+        return;
+      }
+
+      setSession(null);
+      setAuthStatus("checking");
+      setAuthNotice("");
+    });
+
+    return () => subscription.remove();
+  }, [restoreStoredSession]);
 
   useEffect(() => {
     if (!session) return;

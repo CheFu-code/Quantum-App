@@ -24,6 +24,7 @@
     },
     "plugins": [
       "expo-router",
+      "./plugins/with-android-network-security-config",
       [
         "expo-splash-screen",
         {

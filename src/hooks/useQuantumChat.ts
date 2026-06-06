@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { type FlatList } from "react-native";
+import { AppState, type FlatList } from "react-native";
 
 import {
   DEFAULT_CHAT_PREFERENCES,
@@ -131,6 +131,28 @@ export function useQuantumChat() {
   useEffect(() => {
     if (auth.authNotice) setNotice(auth.authNotice);
   }, [auth.authNotice]);
+
+  useEffect(() => {
+    const subscription = AppState.addEventListener("change", (nextState) => {
+      if (nextState === "active") return;
+
+      activeRequestRef.current?.controller.abort();
+      activeRequestRef.current = null;
+      setThreads([]);
+      setActiveThreadId("");
+      setInput("");
+      setAttachments([]);
+      setCopiedId(null);
+      setHydrated(false);
+      setIsTyping(false);
+      setNotice("");
+      setSearchQuery("");
+      setSettingsOpen(false);
+      setSidebarOpen(false);
+    });
+
+    return () => subscription.remove();
+  }, []);
 
   useEffect(() => {
     if (!preferences.autoScroll || messages.length === 0) return;

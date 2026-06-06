@@ -1,4 +1,5 @@
 import { Image } from "expo-image";
+import { memo } from "react";
 import {
   ActivityIndicator,
   StyleSheet,
@@ -26,7 +27,7 @@ import type {
   MessageFeedbackRating,
 } from "@/types/quantum";
 
-export function MessageBubble({
+export const MessageBubble = memo(function MessageBubble({
   copied,
   compact,
   message,
@@ -150,7 +151,7 @@ export function MessageBubble({
       </View>
     </View>
   );
-}
+});
 
 function AnswerSignalRail({ signals }: { signals: string[] }) {
   return (
