@@ -14,7 +14,6 @@ export function TopBar({
   sessionUser,
   onNewConversation,
   onAccountPress,
-  onOpenSettings,
   onOpenSidebar,
   onSelectModel,
 }: {
@@ -26,7 +25,6 @@ export function TopBar({
   sessionUser: SessionUser | null;
   onNewConversation: () => void;
   onAccountPress: () => void;
-  onOpenSettings: () => void;
   onOpenSidebar: () => void;
   onSelectModel: (model: QuantumModel) => void;
 }) {
@@ -58,7 +56,6 @@ export function TopBar({
           onPress={onAccountPress}
           tint={authStatus === "authenticated" ? "#81c995" : "#8ab4f8"}
         />
-        <IconButton icon="settings" label="Settings" onPress={onOpenSettings} />
       </View>
       <ScrollView
         contentContainerStyle={styles.modelRailContent}
