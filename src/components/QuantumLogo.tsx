@@ -1,5 +1,7 @@
-import { LinearGradient } from "expo-linear-gradient";
-import { StyleSheet, Text, View } from "react-native";
+import { Image } from "expo-image";
+import { StyleSheet, View } from "react-native";
+
+const QUANTUM_LOGO = require("../../assets/images/quantum-logo.png");
 
 export function QuantumLogo({ size = 36 }: { size?: number }) {
   return (
@@ -13,68 +15,26 @@ export function QuantumLogo({ size = 36 }: { size?: number }) {
         },
       ]}
     >
-      <LinearGradient
-        colors={["#8ab4f8", "#c58af9", "#f28b82"]}
-        end={{ x: 1, y: 1 }}
-        start={{ x: 0, y: 0 }}
-        style={[styles.gradient, { borderRadius: size * 0.35 }]}
-      >
-        <View
-          style={[
-            styles.inner,
-            {
-              borderRadius: size * 0.26,
-              height: size * 0.72,
-              width: size * 0.72,
-            },
-          ]}
-        >
-          <Text style={[styles.letter, { fontSize: size * 0.42 }]}>Q</Text>
-          <View
-            style={[
-              styles.satellite,
-              {
-                height: size * 0.12,
-                right: size * 0.14,
-                top: size * 0.14,
-                width: size * 0.12,
-              },
-            ]}
-          />
-        </View>
-      </LinearGradient>
+      <Image
+        accessibilityLabel="Quantum"
+        contentFit="contain"
+        source={QUANTUM_LOGO}
+        style={styles.logo}
+      />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  gradient: {
-    alignItems: "center",
-    flex: 1,
-    justifyContent: "center",
-  },
-  inner: {
-    alignItems: "center",
-    backgroundColor: "rgba(13, 15, 20, 0.68)",
-    borderColor: "rgba(255, 255, 255, 0.18)",
-    borderWidth: 1,
-    justifyContent: "center",
-  },
-  letter: {
-    color: "#ffffff",
-    fontWeight: "800",
-    lineHeight: 24,
-  },
-  satellite: {
-    backgroundColor: "#fdd663",
-    borderRadius: 999,
-    position: "absolute",
+  logo: {
+    height: "100%",
+    width: "100%",
   },
   shell: {
-    backgroundColor: "rgba(138, 180, 248, 0.2)",
+    backgroundColor: "rgba(138, 180, 248, 0.06)",
     overflow: "hidden",
     shadowColor: "#8ab4f8",
-    shadowOpacity: 0.28,
-    shadowRadius: 18,
+    shadowOpacity: 0.34,
+    shadowRadius: 16,
   },
 });

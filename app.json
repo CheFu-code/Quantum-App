@@ -8,16 +8,13 @@
     "scheme": "quantum",
     "userInterfaceStyle": "dark",
     "ios": {
-      "bundleIdentifier": "com.chefuinc.quantum",
-      "icon": "./assets/expo.icon"
+      "bundleIdentifier": "com.chefuinc.quantum"
     },
     "android": {
       "package": "com.chefuinc.quantum",
       "adaptiveIcon": {
         "backgroundColor": "#0D0F14",
-        "foregroundImage": "./assets/images/android-icon-foreground.png",
-        "backgroundImage": "./assets/images/android-icon-background.png",
-        "monochromeImage": "./assets/images/android-icon-monochrome.png"
+        "foregroundImage": "./assets/images/android-icon-foreground.png"
       },
       "predictiveBackGestureEnabled": false
     },
@@ -37,7 +34,8 @@
           }
         }
       ],
-      "expo-secure-store"
+      "expo-secure-store",
+      "expo-image"
     ],
     "experiments": {
       "typedRoutes": true,

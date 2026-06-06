@@ -29,7 +29,6 @@ import type {
   ChatThread,
   ConversationFilter,
   ImageAttachment,
-  Message,
   MessageFeedbackRating,
 } from "@/types/quantum";
 

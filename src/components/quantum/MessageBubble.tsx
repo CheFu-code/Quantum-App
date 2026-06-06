@@ -9,6 +9,10 @@ import {
 import { QuantumLogo } from "@/components/QuantumLogo";
 import { ActivityLog } from "@/components/quantum/ActivityLog";
 import { AttachmentPreviewList } from "@/components/quantum/MessageAttachments";
+import {
+  getContentSignals,
+  QuantumMarkdown,
+} from "@/components/quantum/QuantumMarkdown";
 import { SourceCards } from "@/components/quantum/SourceCards";
 import { TinyAction } from "@/components/quantum/TinyAction";
 import { formatTime } from "@/lib/conversations";
@@ -42,6 +46,10 @@ export function MessageBubble({
   const isUser = message.role === "user";
   const sources = normalizeSources(message.metadata?.sources || []);
   const activities = normalizeActivities(message.metadata?.activities || []);
+  const answerSignals = getAnswerSignals(message.content, {
+    hasActivities: activities.length > 0,
+    hasSources: sources.length > 0,
+  });
 
   if (isUser) {
     return (
@@ -71,16 +79,24 @@ export function MessageBubble({
       <View style={styles.assistantContent}>
         <View style={[styles.assistantBubble, compact && styles.compactBubble]}>
           {activities.length > 0 && <ActivityLog activities={activities} />}
-          {message.thinking ? (
+          {message.thinking && !message.content ? (
             <View style={styles.thinkingRow}>
               <ActivityIndicator color="#8ab4f8" size="small" />
               <Text style={styles.thinkingText}>Thinking</Text>
             </View>
-          ) : (
-            <Text selectable style={styles.assistantText}>
-              {message.content}
-            </Text>
+          ) : null}
+          {answerSignals.length > 0 && (
+            <AnswerSignalRail signals={answerSignals} />
           )}
+          {message.content ? (
+            <QuantumMarkdown compact={compact} content={message.content} />
+          ) : null}
+          {message.thinking && message.content ? (
+            <View style={styles.streamingRow}>
+              <ActivityIndicator color="#8ab4f8" size="small" />
+              <Text style={styles.streamingText}>Writing</Text>
+            </View>
+          ) : null}
           {message.generatedImages && message.generatedImages.length > 0 && (
             <View style={styles.generatedImages}>
               {message.generatedImages.map((image) => (
@@ -136,6 +152,37 @@ export function MessageBubble({
   );
 }
 
+function AnswerSignalRail({ signals }: { signals: string[] }) {
+  return (
+    <View style={styles.signalRail}>
+      {signals.map(signal => (
+        <View key={signal} style={styles.signalChip}>
+          <Text style={styles.signalText}>{signal}</Text>
+        </View>
+      ))}
+    </View>
+  );
+}
+
+function getAnswerSignals(
+  content: string,
+  {
+    hasActivities,
+    hasSources,
+  }: {
+    hasActivities: boolean;
+    hasSources: boolean;
+  },
+) {
+  return Array.from(
+    new Set([
+      ...getContentSignals(content),
+      hasActivities ? "Tools" : "",
+      hasSources ? "Sources" : "",
+    ].filter(Boolean)),
+  );
+}
+
 const styles = StyleSheet.create({
   assistantBubble: {
     backgroundColor: "#171b23",
@@ -154,11 +201,6 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: 9,
     marginBottom: 18,
-  },
-  assistantText: {
-    color: "#edf1f7",
-    fontSize: 15,
-    lineHeight: 23,
   },
   assistantTimestamp: {
     color: "#697386",
@@ -207,6 +249,36 @@ const styles = StyleSheet.create({
     gap: 4,
     marginTop: 5,
     paddingHorizontal: 2,
+  },
+  signalChip: {
+    backgroundColor: "rgba(138, 180, 248, 0.08)",
+    borderColor: "rgba(138, 180, 248, 0.16)",
+    borderRadius: 999,
+    borderWidth: 1,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  signalRail: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 6,
+    marginBottom: 9,
+  },
+  signalText: {
+    color: "#a8c7fa",
+    fontSize: 10,
+    fontWeight: "900",
+  },
+  streamingRow: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: 7,
+    marginTop: 5,
+  },
+  streamingText: {
+    color: "#8a93a5",
+    fontSize: 12,
+    fontWeight: "800",
   },
   thinkingRow: {
     alignItems: "center",
