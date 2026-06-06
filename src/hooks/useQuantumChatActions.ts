@@ -9,7 +9,6 @@ import {
 } from "@/constants/quantum";
 import { pickQuantumAttachments } from "@/lib/attachments";
 import {
-  clearLocalConversations,
   deleteAccountConversation,
 } from "@/lib/conversations";
 import { requestQuantumReply } from "@/lib/quantumClient";
@@ -355,9 +354,7 @@ export function useQuantumChatActions({
         onPress: () => {
           setThreads([]);
           setActiveThreadId("");
-          clearLocalConversations().catch(() => {
-            setNotice("Could not clear local history.");
-          });
+          setNotice("Conversations cleared.");
         },
         style: "destructive",
         text: "Clear",
