@@ -8,9 +8,7 @@ import {
 } from "@/constants/quantum";
 import {
   loadAccountConversations,
-  loadLocalConversations,
   saveAccountConversations,
-  saveLocalConversations,
   sortThreads,
 } from "@/lib/conversations";
 import { matchesConversationFilter } from "@/lib/quantumPresentation";
@@ -80,29 +78,22 @@ export function useQuantumChat() {
       setHydrated(false);
 
       try {
-        const localThreads = await loadLocalConversations();
-        const fallbackThreads =
-          localThreads.length > 0 ? localThreads : threadsRef.current;
         const savedThreads =
           auth.authStatus === "authenticated" && auth.accessToken
-            ? await loadAccountConversations(auth.accessToken).then(
-                (accountThreads) =>
-                  accountThreads.length > 0 ? accountThreads : fallbackThreads,
-              )
-            : fallbackThreads;
+            ? await loadAccountConversations(auth.accessToken)
+            : [];
 
         if (!mounted) return;
         setThreads(savedThreads);
         setActiveThreadId(savedThreads[0]?.id || "");
       } catch {
         if (!mounted) return;
-        const fallbackThreads = threadsRef.current;
-        setThreads(fallbackThreads);
-        setActiveThreadId(fallbackThreads[0]?.id || "");
+        setThreads([]);
+        setActiveThreadId("");
         setNotice(
           auth.authStatus === "authenticated"
             ? "Could not load account conversations."
-            : "Could not load saved conversations.",
+            : "Please sign in to load conversations.",
         );
       } finally {
         if (mounted) setHydrated(true);
@@ -120,10 +111,6 @@ export function useQuantumChat() {
     if (!hydrated || isTyping || !preferences.saveConversations) return;
 
     const timeout = setTimeout(() => {
-      saveLocalConversations(threads).catch(() => {
-        setNotice("Could not save conversations.");
-      });
-
       if (auth.authStatus === "authenticated" && auth.accessToken) {
         saveAccountConversations(auth.accessToken, threads).catch(() => {
           setNotice("Could not sync account conversations.");
