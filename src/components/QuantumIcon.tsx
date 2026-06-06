@@ -25,6 +25,7 @@ const ICONS = {
   map: { ios: "map", android: "map", web: "map" },
   menu: { ios: "sidebar.left", android: "menu", web: "menu" },
   mic: { ios: "mic", android: "mic", web: "mic" },
+  more: { ios: "ellipsis", android: "more_horiz", web: "more_horiz" },
   regenerate: {
     ios: "arrow.clockwise",
     android: "refresh",
@@ -69,6 +70,7 @@ const FALLBACKS: Record<QuantumIconName, string> = {
   map: "^",
   menu: "=",
   mic: "|",
+  more: "...",
   regenerate: "R",
   search: "?",
   send: ">",

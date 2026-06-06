@@ -50,7 +50,6 @@ export function useQuantumChat() {
   const [unsavedWarningOpen, setUnsavedWarningOpen] = useState(false);
   const listRef = useRef<FlatList<Message>>(null);
   const activeRequestRef = useRef<ActiveRequest | null>(null);
-  const threadsRef = useRef<ChatThread[]>([]);
   const auth = useQuantumAuth();
 
   const activeThread = useMemo(
@@ -67,10 +66,6 @@ export function useQuantumChat() {
   );
 
   useEffect(() => {
-    threadsRef.current = threads;
-  }, [threads]);
-
-  useEffect(() => {
     if (auth.authStatus === "checking") return;
 
     let mounted = true;
@@ -85,8 +80,8 @@ export function useQuantumChat() {
             : [];
 
         if (!mounted) return;
-        setThreads(savedThreads);
-        setActiveThreadId(savedThreads[0]?.id || "");
+        setThreads(accountThreads);
+        setActiveThreadId(accountThreads[0]?.id || "");
       } catch {
         if (!mounted) return;
         setThreads([]);
@@ -107,8 +102,16 @@ export function useQuantumChat() {
   }, [auth.accessToken, auth.authStatus, auth.sessionUser?.uid]);
 
   useEffect(() => {
-    if (!hydrated || isTyping || !preferences.saveConversations) return;
+    if (
+      !hydrated ||
+      isTyping ||
+      auth.authStatus !== "authenticated" ||
+      !auth.accessToken
+    ) {
+      return;
+    }
 
+    const accessToken = auth.accessToken;
     const timeout = setTimeout(() => {
       if (auth.authStatus === "authenticated" && auth.accessToken) {
         saveAccountConversations(auth.accessToken, threads).catch(() => {
@@ -123,7 +126,6 @@ export function useQuantumChat() {
     auth.authStatus,
     hydrated,
     isTyping,
-    preferences.saveConversations,
     threads,
   ]);
 
@@ -143,6 +145,7 @@ export function useQuantumChat() {
 
   const actions = useQuantumChatActions({
     accessToken: auth.accessToken,
+    authStatus: auth.authStatus,
     activeRequestRef,
     activeThread,
     activeThreadId,

@@ -1,5 +1,3 @@
-import AsyncStorage from "@react-native-async-storage/async-storage";
-
 import { CHEFU_API_BASE } from "@/constants/quantum";
 import type { ChatThread, StoredThread } from "@/types/quantum";
 

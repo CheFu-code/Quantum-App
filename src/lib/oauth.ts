@@ -26,6 +26,8 @@ export const QUANTUM_AUTH_REDIRECT_URI = AuthSession.makeRedirectUri({
 type OAuthUserInfo = {
   email?: unknown;
   name?: unknown;
+  picture?: unknown;
+  photoURL?: unknown;
   roles?: unknown;
   sub?: unknown;
 };
@@ -38,6 +40,7 @@ export async function startQuantumSignIn() {
     extraParams: {
       nonce,
     },
+    prompt: AuthSession.Prompt.Login,
     redirectUri: QUANTUM_AUTH_REDIRECT_URI,
     responseType: AuthSession.ResponseType.Code,
     scopes: QUANTUM_OAUTH_SCOPES,
@@ -110,6 +113,12 @@ function normalizeSessionUser(userInfo: OAuthUserInfo): SessionUser | null {
         ? userInfo.name.trim()
         : undefined,
     email,
+    photoURL:
+      typeof userInfo.picture === "string" && userInfo.picture.trim()
+        ? userInfo.picture.trim()
+        : typeof userInfo.photoURL === "string" && userInfo.photoURL.trim()
+          ? userInfo.photoURL.trim()
+          : undefined,
     roles: Array.isArray(userInfo.roles)
       ? userInfo.roles.map(String).filter(Boolean)
       : [],

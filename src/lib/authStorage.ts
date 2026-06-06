@@ -1,6 +1,4 @@
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as SecureStore from "expo-secure-store";
-import { Platform } from "react-native";
 
 import type { SessionUser } from "@/types/quantum";
 
@@ -25,22 +23,19 @@ export async function loadStoredAuthSession() {
 }
 
 export async function saveStoredAuthSession(session: StoredAuthSession) {
-  const value = JSON.stringify(session);
+  if (!(await canUseSecureStore())) return;
 
-  if (await canUseSecureStore()) {
-    await SecureStore.setItemAsync(STORAGE_KEY, value, SECURE_STORE_OPTIONS);
-    return;
-  }
-
-  await AsyncStorage.setItem(STORAGE_KEY, value);
+  await SecureStore.setItemAsync(
+    STORAGE_KEY,
+    JSON.stringify(session),
+    SECURE_STORE_OPTIONS,
+  );
 }
 
 export async function clearStoredAuthSession() {
   if (await canUseSecureStore()) {
     await SecureStore.deleteItemAsync(STORAGE_KEY, SECURE_STORE_OPTIONS);
   }
-
-  await AsyncStorage.removeItem(STORAGE_KEY);
 }
 
 export function isStoredAuthSessionFresh(
@@ -78,6 +73,7 @@ function parseStoredAuthSession(value: string | null): StoredAuthSession | null 
       user: {
         displayName: user.displayName,
         email: user.email,
+        photoURL: user.photoURL,
         roles: Array.isArray(user.roles) ? user.roles.map(String) : [],
         uid: user.uid,
       },
@@ -92,12 +88,10 @@ async function readStoredValue() {
     return SecureStore.getItemAsync(STORAGE_KEY, SECURE_STORE_OPTIONS);
   }
 
-  return AsyncStorage.getItem(STORAGE_KEY);
+  return null;
 }
 
 async function canUseSecureStore() {
-  if (Platform.OS === "web") return false;
-
   try {
     return await SecureStore.isAvailableAsync();
   } catch {
