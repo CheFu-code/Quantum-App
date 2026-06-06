@@ -6,7 +6,6 @@ import { MODELS, type QuantumModel } from "@/constants/quantum";
 import type { AuthStatus, ChatThread, SessionUser } from "@/types/quantum";
 
 export function TopBar({
-  activeThread,
   authStatus,
   conversationCount,
   isTyping,
@@ -17,7 +16,6 @@ export function TopBar({
   onOpenSidebar,
   onSelectModel,
 }: {
-  activeThread?: ChatThread;
   authStatus: AuthStatus;
   conversationCount: number;
   isTyping: boolean;
@@ -43,7 +41,7 @@ export function TopBar({
         <QuantumLogo size={34} />
         <View style={styles.topTitleBlock}>
           <Text numberOfLines={1} style={styles.appTitle}>
-            {activeThread?.title || "Quantum"}
+            Quantum
           </Text>
           <Text numberOfLines={1} style={styles.appSubtitle}>
             {subtitle}
