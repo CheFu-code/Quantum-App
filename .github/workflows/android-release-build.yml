@@ -84,6 +84,9 @@ jobs:
       - name: Install dependencies
         run: npm install --legacy-peer-deps --include=dev
 
+      - name: Generate native code
+        run: npx expo prebuild --platform android
+
       - name: Validate Expo config
         run: npx expo config --type public
 
