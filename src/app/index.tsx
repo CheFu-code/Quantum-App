@@ -14,6 +14,7 @@ import { AccountMenu } from "@/components/quantum/AccountMenu";
 import { ConversationDrawer } from "@/components/quantum/ConversationDrawer";
 import { EmptyState } from "@/components/quantum/EmptyState";
 import { MessageBubble } from "@/components/quantum/MessageBubble";
+import { OfflineStatusBar } from "@/components/quantum/OfflineStatusBar";
 import { QuantumOnboarding } from "@/components/quantum/QuantumOnboarding";
 import { SettingsSheet } from "@/components/quantum/SettingsSheet";
 import { TopBar } from "@/components/quantum/TopBar";
@@ -99,6 +100,8 @@ export default function Index() {
           onOpenSidebar={() => actions.setSidebarOpen(true)}
           onSelectModel={actions.setSelectedModel}
         />
+
+        <OfflineStatusBar visible={!chat.networkStatus.isOnline} />
 
         <FlatList
           ref={chat.listRef}

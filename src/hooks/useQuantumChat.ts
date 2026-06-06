@@ -14,6 +14,7 @@ import {
 import { matchesConversationFilter } from "@/lib/quantumPresentation";
 import { useQuantumAuth } from "@/hooks/useQuantumAuth";
 import { useQuantumChatActions } from "@/hooks/useQuantumChatActions";
+import { useNetworkStatus } from "@/hooks/useNetworkStatus";
 import type {
   ChatPreferences,
   ChatThread,
@@ -50,6 +51,7 @@ export function useQuantumChat() {
   const listRef = useRef<FlatList<Message>>(null);
   const activeRequestRef = useRef<ActiveRequest | null>(null);
   const auth = useQuantumAuth();
+  const networkStatus = useNetworkStatus();
 
   const activeThread = useMemo(
     () => threads.find((thread) => thread.id === activeThreadId),
@@ -73,6 +75,12 @@ export function useQuantumChat() {
       setHydrated(false);
 
       try {
+        if (!networkStatus.isOnline) {
+          if (!mounted) return;
+          setNotice("No internet connection. Reconnect to sync conversations.");
+          return;
+        }
+
         const savedThreads =
           auth.authStatus === "authenticated" && auth.accessToken
             ? await loadAccountConversations(auth.accessToken)
@@ -98,12 +106,18 @@ export function useQuantumChat() {
     return () => {
       mounted = false;
     };
-  }, [auth.accessToken, auth.authStatus, auth.sessionUser?.uid]);
+  }, [
+    auth.accessToken,
+    auth.authStatus,
+    auth.sessionUser?.uid,
+    networkStatus.isOnline,
+  ]);
 
   useEffect(() => {
     if (
       !hydrated ||
       isTyping ||
+      !networkStatus.isOnline ||
       auth.authStatus !== "authenticated" ||
       !auth.accessToken
     ) {
@@ -125,6 +139,7 @@ export function useQuantumChat() {
     auth.authStatus,
     hydrated,
     isTyping,
+    networkStatus.isOnline,
     threads,
   ]);
 
@@ -172,6 +187,7 @@ export function useQuantumChat() {
     activeThreadId,
     attachments,
     input,
+    isOnline: networkStatus.isOnline,
     isTyping,
     preferences,
     selectedModel,
@@ -209,6 +225,7 @@ export function useQuantumChat() {
     listRef,
     messages,
     notice,
+    networkStatus,
     preferences,
     searchQuery,
     selectedModel,

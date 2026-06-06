@@ -1,0 +1,284 @@
+name: Deploy Quantum Mobile
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-quantum-mobile-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  attestations: write
+  contents: read
+  id-token: write
+
+env:
+  EXPO_NO_TELEMETRY: "1"
+  NODE_ENV: production
+  NODE_VERSION: 22.13.x
+
+jobs:
+  verify:
+    name: Security, Tests, and Audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          cache: npm
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Install dependencies
+        run: npm ci --include=dev --legacy-peer-deps
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Run SSO and offline UX tests
+        run: npm run test -- --silent
+
+      - name: Audit production dependency risk
+        run: npm audit --audit-level=high
+
+  build-android:
+    name: Signed Android Release
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      GRADLE_OPTS: "-Dorg.gradle.daemon=false -Dorg.gradle.jvmargs=-Xmx4g"
+      KEYSTORE_ALIAS: ${{ secrets.KEYSTORE_ALIAS }}
+      KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+      KEYSTORE_KEY_PASSWORD: ${{ secrets.KEYSTORE_KEY_PASSWORD }}
+      KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          cache: npm
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android packages
+        run: |
+          set -euo pipefail
+          sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0" "ndk;27.1.12297006" "cmake;3.22.1"
+
+      - name: Install dependencies
+        run: npm ci --include=dev --legacy-peer-deps
+
+      - name: Generate Android native project
+        run: npx expo prebuild --platform android --no-install
+
+      - name: Validate Expo config
+        run: npx expo config --type public
+
+      - name: Verify Android signing secrets
+        run: |
+          set -euo pipefail
+          test -n "$KEYSTORE_BASE64"
+          test -n "$KEYSTORE_PASSWORD"
+          test -n "$KEYSTORE_ALIAS"
+          test -n "$KEYSTORE_KEY_PASSWORD"
+
+      - name: Decode Android keystore
+        id: android_keystore
+        run: |
+          set -euo pipefail
+          KEYSTORE_PATH="$RUNNER_TEMP/quantum-release.jks"
+          printf '%s' "$KEYSTORE_BASE64" | base64 --decode > "$KEYSTORE_PATH"
+          test -s "$KEYSTORE_PATH"
+          echo "path=$KEYSTORE_PATH" >> "$GITHUB_OUTPUT"
+
+      - name: Build signed Android APK and AAB
+        working-directory: android
+        run: |
+          set -euo pipefail
+          chmod +x ./gradlew
+          ./gradlew app:assembleRelease app:bundleRelease \
+            -x lint \
+            -x test \
+            --stacktrace \
+            --console=plain \
+            -Pandroid.enableMinifyInReleaseBuilds=true \
+            -Pandroid.enableShrinkResourcesInReleaseBuilds=true \
+            -Pandroid.enableBundleCompression=true \
+            -Pandroid.injected.signing.store.file="${{ steps.android_keystore.outputs.path }}" \
+            -Pandroid.injected.signing.store.password="$KEYSTORE_PASSWORD" \
+            -Pandroid.injected.signing.key.alias="$KEYSTORE_ALIAS" \
+            -Pandroid.injected.signing.key.password="$KEYSTORE_KEY_PASSWORD"
+
+      - name: Generate Android checksums
+        run: |
+          set -euo pipefail
+          mkdir -p build-artifacts/android
+          cp android/app/build/outputs/apk/release/*.apk build-artifacts/android/
+          cp android/app/build/outputs/bundle/release/*.aab build-artifacts/android/
+          (cd build-artifacts/android && sha256sum * > SHA256SUMS)
+
+      - name: Upload Android artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          if-no-files-found: error
+          name: quantum-android-production-${{ github.sha }}
+          path: build-artifacts/android/*
+          retention-days: 30
+
+      - name: Attest Android artifacts
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: build-artifacts/android/*
+
+  build-ios:
+    name: Signed iOS Release
+    needs: verify
+    runs-on: macos-latest
+    timeout-minutes: 90
+    env:
+      IOS_CERTIFICATE_BASE64: ${{ secrets.IOS_CERTIFICATE_BASE64 }}
+      IOS_CERTIFICATE_PASSWORD: ${{ secrets.IOS_CERTIFICATE_PASSWORD }}
+      IOS_EXPORT_METHOD: ${{ secrets.IOS_EXPORT_METHOD }}
+      IOS_PROVISION_PROFILE_BASE64: ${{ secrets.IOS_PROVISION_PROFILE_BASE64 }}
+      IOS_TEAM_ID: ${{ secrets.IOS_TEAM_ID }}
+      KEYCHAIN_PASSWORD: ${{ secrets.IOS_BUILD_KEYCHAIN_PASSWORD }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          cache: npm
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Install dependencies
+        run: npm ci --include=dev --legacy-peer-deps
+
+      - name: Verify iOS signing secrets
+        run: |
+          set -euo pipefail
+          test -n "$IOS_CERTIFICATE_BASE64"
+          test -n "$IOS_CERTIFICATE_PASSWORD"
+          test -n "$IOS_PROVISION_PROFILE_BASE64"
+          test -n "$IOS_TEAM_ID"
+          test -n "$KEYCHAIN_PASSWORD"
+
+      - name: Generate iOS native project
+        run: npx expo prebuild --platform ios --no-install
+
+      - name: Install CocoaPods dependencies
+        run: npx pod-install ios
+
+      - name: Import iOS signing assets
+        id: ios_signing
+        run: |
+          set -euo pipefail
+          CERT_PATH="$RUNNER_TEMP/distribution.p12"
+          PROFILE_PATH="$RUNNER_TEMP/Quantum.mobileprovision"
+          PROFILE_PLIST="$RUNNER_TEMP/profile.plist"
+          KEYCHAIN_PATH="$RUNNER_TEMP/build.keychain-db"
+
+          printf '%s' "$IOS_CERTIFICATE_BASE64" | base64 -D > "$CERT_PATH"
+          printf '%s' "$IOS_PROVISION_PROFILE_BASE64" | base64 -D > "$PROFILE_PATH"
+
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security import "$CERT_PATH" -P "$IOS_CERTIFICATE_PASSWORD" -A -t cert -f pkcs12 -k "$KEYCHAIN_PATH"
+          security list-keychains -d user -s "$KEYCHAIN_PATH" login.keychain-db
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+
+          mkdir -p "$HOME/Library/MobileDevice/Provisioning Profiles"
+          security cms -D -i "$PROFILE_PATH" > "$PROFILE_PLIST"
+          PROFILE_UUID=$(/usr/libexec/PlistBuddy -c "Print UUID" "$PROFILE_PLIST")
+          PROFILE_NAME=$(/usr/libexec/PlistBuddy -c "Print Name" "$PROFILE_PLIST")
+          cp "$PROFILE_PATH" "$HOME/Library/MobileDevice/Provisioning Profiles/$PROFILE_UUID.mobileprovision"
+
+          echo "profile_name=$PROFILE_NAME" >> "$GITHUB_OUTPUT"
+
+      - name: Archive signed iOS app
+        run: |
+          set -euo pipefail
+          WORKSPACE=$(ls ios/*.xcworkspace | head -n 1)
+          SCHEME=$(basename "$WORKSPACE" .xcworkspace)
+          xcodebuild \
+            -workspace "$WORKSPACE" \
+            -scheme "$SCHEME" \
+            -configuration Release \
+            -sdk iphoneos \
+            -archivePath "$PWD/build/Quantum.xcarchive" \
+            DEVELOPMENT_TEAM="$IOS_TEAM_ID" \
+            CODE_SIGN_STYLE=Manual \
+            CODE_SIGN_IDENTITY="Apple Distribution" \
+            PROVISIONING_PROFILE_SPECIFIER="${{ steps.ios_signing.outputs.profile_name }}" \
+            archive
+
+      - name: Export signed iOS IPA
+        run: |
+          set -euo pipefail
+          EXPORT_METHOD="${IOS_EXPORT_METHOD:-app-store}"
+          cat > "$RUNNER_TEMP/exportOptions.plist" << PLIST
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>method</key>
+            <string>${EXPORT_METHOD}</string>
+            <key>signingStyle</key>
+            <string>manual</string>
+            <key>teamID</key>
+            <string>${IOS_TEAM_ID}</string>
+            <key>provisioningProfiles</key>
+            <dict>
+              <key>com.chefuinc.quantum</key>
+              <string>${{ steps.ios_signing.outputs.profile_name }}</string>
+            </dict>
+          </dict>
+          </plist>
+          PLIST
+          xcodebuild -exportArchive \
+            -archivePath "$PWD/build/Quantum.xcarchive" \
+            -exportPath "$PWD/build-artifacts/ios" \
+            -exportOptionsPlist "$RUNNER_TEMP/exportOptions.plist"
+          (cd build-artifacts/ios && shasum -a 256 *.ipa > SHA256SUMS)
+
+      - name: Upload iOS artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          if-no-files-found: error
+          name: quantum-ios-production-${{ github.sha }}
+          path: build-artifacts/ios/*
+          retention-days: 30
+
+      - name: Attest iOS artifacts
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: build-artifacts/ios/*

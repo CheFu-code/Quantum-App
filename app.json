@@ -25,6 +25,7 @@
     "plugins": [
       "expo-router",
       "./plugins/with-android-network-security-config",
+      "./plugins/with-android-release-hardening",
       [
         "expo-splash-screen",
         {
