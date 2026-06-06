@@ -9,7 +9,11 @@ import {
   saveStoredAuthSession,
   type StoredAuthSession,
 } from "@/lib/authStorage";
-import { startQuantumSignIn } from "@/lib/oauth";
+import {
+  refreshQuantumSession,
+  revokeQuantumSession,
+  startQuantumSignIn,
+} from "@/lib/oauth";
 import type { AuthStatus } from "@/types/quantum";
 
 export function useQuantumAuth() {
@@ -21,10 +25,19 @@ export function useQuantumAuth() {
     let mounted = true;
 
     loadStoredAuthSession()
-      .then((storedSession) => {
+      .then(async (storedSession) => {
         if (!mounted) return;
 
         if (!isStoredAuthSessionFresh(storedSession)) {
+          const refreshedSession = await refreshStoredSession(storedSession);
+          if (!mounted) return;
+
+          if (refreshedSession) {
+            setSession(refreshedSession);
+            setAuthStatus("authenticated");
+            return;
+          }
+
           setSession(null);
           setAuthStatus("guest");
           if (storedSession) void clearStoredAuthSession();
@@ -52,14 +65,27 @@ export function useQuantumAuth() {
       0,
       (session.expiresAt - Math.floor(Date.now() / 1000) - 30) * 1000,
     );
-    const timeout = setTimeout(() => {
+    let active = true;
+    const timeout = setTimeout(async () => {
+      const refreshedSession = await refreshStoredSession(session);
+      if (!active) return;
+
+      if (refreshedSession) {
+        setSession(refreshedSession);
+        setAuthStatus("authenticated");
+        return;
+      }
+
       setSession(null);
       setAuthStatus("guest");
       setAuthNotice("Your CheFu session expired. Sign in again to sync.");
       void clearStoredAuthSession();
     }, delay);
 
-    return () => clearTimeout(timeout);
+    return () => {
+      active = false;
+      clearTimeout(timeout);
+    };
   }, [session]);
 
   const signIn = useCallback(async () => {
@@ -89,11 +115,12 @@ export function useQuantumAuth() {
   }, [session]);
 
   const signOut = useCallback(async () => {
+    await revokeQuantumSession(session).catch(() => undefined);
     await clearStoredAuthSession();
     setSession(null);
     setAuthStatus("guest");
     setAuthNotice("Signed out.");
-  }, []);
+  }, [session]);
 
   const openAccount = useCallback(async () => {
     await WebBrowser.openBrowserAsync(CHEFU_ACCOUNT_MANAGE_HREF);
@@ -119,4 +146,17 @@ export function useQuantumAuth() {
       signOut,
     ],
   );
+}
+
+async function refreshStoredSession(session: StoredAuthSession | null) {
+  if (!session?.refreshToken) return null;
+
+  try {
+    const refreshedSession = await refreshQuantumSession(session);
+    if (refreshedSession) await saveStoredAuthSession(refreshedSession);
+    return refreshedSession;
+  } catch {
+    await clearStoredAuthSession();
+    return null;
+  }
 }

@@ -82,7 +82,6 @@ export default function Index() {
       <StatusBar style="light" />
       <SafeAreaView edges={["top", "left", "right"]} style={styles.safeArea}>
         <TopBar
-          activeThread={chat.activeThread}
           authStatus={chat.authStatus}
           conversationCount={chat.threads.length}
           isTyping={chat.isTyping}
@@ -97,7 +96,6 @@ export default function Index() {
 
             void actions.openLogin();
           }}
-          onOpenSettings={() => actions.setSettingsOpen(true)}
           onOpenSidebar={() => actions.setSidebarOpen(true)}
           onSelectModel={actions.setSelectedModel}
         />
@@ -168,6 +166,10 @@ export default function Index() {
         onDeleteThread={actions.confirmDeleteThread}
         onFilterChange={actions.setConversationFilter}
         onNewConversation={actions.startNewConversation}
+        onOpenSettings={() => {
+          actions.setSidebarOpen(false);
+          actions.setSettingsOpen(true);
+        }}
         onSearchChange={actions.setSearchQuery}
         onSelectThread={(threadId) => {
           actions.setActiveThreadId(threadId);

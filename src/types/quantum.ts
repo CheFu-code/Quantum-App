@@ -29,7 +29,6 @@ export type ChatPreferences = {
   autoScroll: boolean;
   compactMessages: boolean;
   codeExecution: boolean;
-  enterToSend: boolean;
   fileSearch: boolean;
   mapsGrounding: boolean;
   responseStyle: ResponseStyle;

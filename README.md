@@ -1,6 +1,6 @@
 # Quantum
 
-Quantum is the Expo/React Native mobile client for the Quantum AI assistant. It mirrors the `Quantum` web app experience with chat threads, model tiers, tool toggles, file attachments, local conversation history, settings, and the same `/api/chat` request contract.
+Quantum is the Expo/React Native mobile client for the Quantum AI assistant. It mirrors the `Quantum` web app experience with account-synced chat threads, model tiers, tool toggles, file attachments, settings, and the same `/api/chat` request contract.
 
 ## Stack
 
@@ -109,7 +109,7 @@ npm run web
 
 ## Notes
 
-- Conversation history is stored locally with AsyncStorage.
+- Conversation history syncs through the CheFu backend for signed-in users. Guest conversations stay in memory for the current app session only.
 - Attachments are read as base64 and sent to the Quantum chat API.
 - The Android emulator hostname for your computer is `10.0.2.2`, not `localhost`.
 - If `adb` or `emulator` is not recognized, re-run the Android environment commands above.

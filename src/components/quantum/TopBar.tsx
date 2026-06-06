@@ -1,10 +1,9 @@
-import { Image } from "expo-image";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { QuantumLogo } from "@/components/QuantumLogo";
 import { IconButton } from "@/components/quantum/IconButton";
 import { MODELS, type QuantumModel } from "@/constants/quantum";
-import type { AuthStatus, ChatThread, SessionUser } from "@/types/quantum";
+import type { AuthStatus, SessionUser } from "@/types/quantum";
 
 export function TopBar({
   authStatus,
@@ -102,26 +101,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "800",
   },
-  avatarButton: {
-    alignItems: "center",
-    backgroundColor: "rgba(129, 201, 149, 0.1)",
-    borderColor: "rgba(129, 201, 149, 0.24)",
-    borderRadius: 12,
-    borderWidth: 1,
-    height: 39,
-    justifyContent: "center",
-    overflow: "hidden",
-    width: 39,
-  },
-  avatarImage: {
-    height: "100%",
-    width: "100%",
-  },
-  avatarText: {
-    color: "#f4f7fb",
-    fontSize: 12,
-    fontWeight: "900",
-  },
   modelChip: {
     alignItems: "center",
     borderColor: "rgba(255, 255, 255, 0.08)",
@@ -163,14 +142,3 @@ const styles = StyleSheet.create({
     minWidth: 0,
   },
 });
-
-function getInitials(user: SessionUser) {
-  const source = user.displayName || user.email || "CheFu";
-  const parts = source
-    .replace(/@.*/, "")
-    .split(/\s+|[._-]/)
-    .filter(Boolean)
-    .slice(0, 2);
-
-  return (parts.map((part) => part[0]).join("") || "C").toUpperCase();
-}
