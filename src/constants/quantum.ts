@@ -156,7 +156,6 @@ export const DEFAULT_CHAT_PREFERENCES: ChatPreferences = {
   fileSearch: false,
   mapsGrounding: false,
   responseStyle: "balanced",
-  saveConversations: true,
   serviceTier: "standard",
   showTimestamps: true,
   urlContext: true,

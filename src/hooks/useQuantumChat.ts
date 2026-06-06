@@ -8,9 +8,7 @@ import {
 } from "@/constants/quantum";
 import {
   loadAccountConversations,
-  loadLocalConversations,
   saveAccountConversations,
-  saveLocalConversations,
   sortThreads,
 } from "@/lib/conversations";
 import { matchesConversationFilter } from "@/lib/quantumPresentation";
@@ -51,7 +49,6 @@ export function useQuantumChat() {
   const [notice, setNotice] = useState("");
   const listRef = useRef<FlatList<Message>>(null);
   const activeRequestRef = useRef<ActiveRequest | null>(null);
-  const threadsRef = useRef<ChatThread[]>([]);
   const auth = useQuantumAuth();
 
   const activeThread = useMemo(
@@ -68,10 +65,6 @@ export function useQuantumChat() {
   );
 
   useEffect(() => {
-    threadsRef.current = threads;
-  }, [threads]);
-
-  useEffect(() => {
     if (auth.authStatus === "checking") return;
 
     let mounted = true;
@@ -80,30 +73,24 @@ export function useQuantumChat() {
       setHydrated(false);
 
       try {
-        const localThreads = await loadLocalConversations();
-        const fallbackThreads =
-          localThreads.length > 0 ? localThreads : threadsRef.current;
-        const savedThreads =
-          auth.authStatus === "authenticated" && auth.accessToken
-            ? await loadAccountConversations(auth.accessToken).then(
-                (accountThreads) =>
-                  accountThreads.length > 0 ? accountThreads : fallbackThreads,
-              )
-            : fallbackThreads;
+        let accountThreads: ChatThread[] = [];
+
+        if (auth.authStatus === "authenticated" && auth.accessToken) {
+          accountThreads = await loadAccountConversations(
+            auth.accessToken,
+          );
+        }
 
         if (!mounted) return;
-        setThreads(savedThreads);
-        setActiveThreadId(savedThreads[0]?.id || "");
+        setThreads(accountThreads);
+        setActiveThreadId(accountThreads[0]?.id || "");
       } catch {
         if (!mounted) return;
-        const fallbackThreads = threadsRef.current;
-        setThreads(fallbackThreads);
-        setActiveThreadId(fallbackThreads[0]?.id || "");
-        setNotice(
-          auth.authStatus === "authenticated"
-            ? "Could not load account conversations."
-            : "Could not load saved conversations.",
-        );
+        setThreads([]);
+        setActiveThreadId("");
+        if (auth.authStatus === "authenticated") {
+          setNotice("Could not load account conversations.");
+        }
       } finally {
         if (mounted) setHydrated(true);
       }
@@ -117,18 +104,20 @@ export function useQuantumChat() {
   }, [auth.accessToken, auth.authStatus, auth.sessionUser?.uid]);
 
   useEffect(() => {
-    if (!hydrated || isTyping || !preferences.saveConversations) return;
+    if (
+      !hydrated ||
+      isTyping ||
+      auth.authStatus !== "authenticated" ||
+      !auth.accessToken
+    ) {
+      return;
+    }
 
+    const accessToken = auth.accessToken;
     const timeout = setTimeout(() => {
-      saveLocalConversations(threads).catch(() => {
-        setNotice("Could not save conversations.");
+      saveAccountConversations(accessToken, threads).catch(() => {
+        setNotice("Could not sync account conversations.");
       });
-
-      if (auth.authStatus === "authenticated" && auth.accessToken) {
-        saveAccountConversations(auth.accessToken, threads).catch(() => {
-          setNotice("Could not sync account conversations.");
-        });
-      }
     }, 600);
 
     return () => clearTimeout(timeout);
@@ -137,7 +126,6 @@ export function useQuantumChat() {
     auth.authStatus,
     hydrated,
     isTyping,
-    preferences.saveConversations,
     threads,
   ]);
 
@@ -157,6 +145,7 @@ export function useQuantumChat() {
 
   const actions = useQuantumChatActions({
     accessToken: auth.accessToken,
+    authStatus: auth.authStatus,
     activeRequestRef,
     activeThread,
     activeThreadId,

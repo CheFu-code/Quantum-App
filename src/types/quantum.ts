@@ -21,6 +21,7 @@ export type SessionUser = {
   uid: string;
   email: string;
   displayName?: string;
+  photoURL?: string;
   roles?: string[];
 };
 
@@ -32,7 +33,6 @@ export type ChatPreferences = {
   fileSearch: boolean;
   mapsGrounding: boolean;
   responseStyle: ResponseStyle;
-  saveConversations: boolean;
   serviceTier: ServiceTier;
   showTimestamps: boolean;
   urlContext: boolean;

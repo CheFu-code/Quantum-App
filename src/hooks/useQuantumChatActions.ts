@@ -8,10 +8,7 @@ import {
   type QuantumModel,
 } from "@/constants/quantum";
 import { pickQuantumAttachments } from "@/lib/attachments";
-import {
-  clearLocalConversations,
-  deleteAccountConversation,
-} from "@/lib/conversations";
+import { deleteAccountConversation } from "@/lib/conversations";
 import { requestQuantumReply } from "@/lib/quantumClient";
 import {
   applyMessageFeedback,
@@ -25,6 +22,7 @@ import {
   type FinalizeAssistantMessageArgs,
 } from "@/lib/threadMutations";
 import type {
+  AuthStatus,
   ChatPreferences,
   ChatThread,
   ConversationFilter,
@@ -42,6 +40,7 @@ type StateSetter<T> = Dispatch<SetStateAction<T>>;
 
 export function useQuantumChatActions({
   accessToken,
+  authStatus,
   activeRequestRef,
   activeThread,
   activeThreadId,
@@ -71,6 +70,7 @@ export function useQuantumChatActions({
   onSignOut,
 }: {
   accessToken?: string;
+  authStatus: AuthStatus;
   activeRequestRef: MutableRefObject<ActiveRequest | null>;
   activeThread?: ChatThread;
   activeThreadId: string;
@@ -312,11 +312,17 @@ export function useQuantumChatActions({
   }
 
   function startNewConversation() {
+    if (authStatus === "checking") {
+      setNotice("Checking your CheFu session. Try again in a moment.");
+      return;
+    }
+
     stopResponse();
     setActiveThreadId("");
     setInput("");
     setAttachments([]);
-    setNotice("");
+    setNotice(authStatus === "guest" ? "Started a guest conversation." : "");
+    setSettingsOpen(false);
     setSidebarOpen(false);
   }
 
@@ -329,7 +335,9 @@ export function useQuantumChatActions({
       });
     }
     if (activeThreadId === threadId) {
-      setActiveThreadId(nextThreads[0]?.id || "");
+      setActiveThreadId("");
+      setInput("");
+      setAttachments([]);
     }
   }
 
@@ -355,9 +363,6 @@ export function useQuantumChatActions({
         onPress: () => {
           setThreads([]);
           setActiveThreadId("");
-          clearLocalConversations().catch(() => {
-            setNotice("Could not clear local history.");
-          });
         },
         style: "destructive",
         text: "Clear",
@@ -381,6 +386,14 @@ export function useQuantumChatActions({
   }
 
   async function signOut() {
+    stopResponse();
+    setThreads([]);
+    setActiveThreadId("");
+    setInput("");
+    setAttachments([]);
+    setNotice("");
+    setSettingsOpen(false);
+    setSidebarOpen(false);
     await onSignOut();
   }
 

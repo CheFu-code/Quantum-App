@@ -1,11 +1,12 @@
 import { LinearGradient } from "expo-linear-gradient";
+import { useState } from "react";
 import {
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   TextInput,
   View,
+  ScrollView,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -48,6 +49,13 @@ export function ChatComposer({
   onToggleWebSearch: () => void;
 }) {
   const canSend = Boolean(input.trim() || attachments.length > 0);
+  const [toolMenuOpen, setToolMenuOpen] = useState(false);
+  const activeToolCount = [
+    webSearchEnabled,
+    preferences.urlContext,
+    preferences.codeExecution,
+    preferences.mapsGrounding,
+  ].filter(Boolean).length;
 
   return (
     <SafeAreaView edges={["bottom"]} style={styles.composerSafeArea}>
@@ -82,43 +90,19 @@ export function ChatComposer({
           </ScrollView>
         )}
 
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          style={styles.toolRail}
-        >
-          <ToolChip
-            active={webSearchEnabled}
-            icon="globe"
-            label="Search"
-            onPress={onToggleWebSearch}
-            tint="#81c995"
-          />
-          <ToolChip
-            active={preferences.urlContext}
-            icon="link"
-            label="URL"
-            onPress={onToggleUrl}
-            tint="#8ab4f8"
-          />
-          <ToolChip
-            active={preferences.codeExecution}
-            icon="code"
-            label="Code"
-            onPress={onToggleCode}
-            tint="#fdd663"
-          />
-          <ToolChip
-            active={preferences.mapsGrounding}
-            icon="map"
-            label="Maps"
-            onPress={onToggleMaps}
-            tint="#f28b82"
-          />
-        </ScrollView>
-
         <View style={styles.inputBox}>
-          <IconButton icon="attach" label="Attach" onPress={onAttach} />
+          <View style={styles.moreButtonWrap}>
+            <IconButton
+              icon="more"
+              label="More actions"
+              onPress={() => setToolMenuOpen((open) => !open)}
+            />
+            {activeToolCount > 0 ? (
+              <View style={styles.activeToolBadge}>
+                <Text style={styles.activeToolBadgeText}>{activeToolCount}</Text>
+              </View>
+            ) : null}
+          </View>
           <TextInput
             multiline
             onChangeText={onInputChange}
@@ -153,6 +137,48 @@ export function ChatComposer({
             </LinearGradient>
           </Pressable>
         </View>
+        {toolMenuOpen ? (
+          <View style={styles.toolMenu}>
+            <ToolChip
+              active={false}
+              icon="attach"
+              label="Attach file"
+              onPress={() => {
+                setToolMenuOpen(false);
+                onAttach();
+              }}
+              tint="#c58af9"
+            />
+            <ToolChip
+              active={webSearchEnabled}
+              icon="globe"
+              label="Search"
+              onPress={onToggleWebSearch}
+              tint="#81c995"
+            />
+            <ToolChip
+              active={preferences.urlContext}
+              icon="link"
+              label="URL"
+              onPress={onToggleUrl}
+              tint="#8ab4f8"
+            />
+            <ToolChip
+              active={preferences.codeExecution}
+              icon="code"
+              label="Code"
+              onPress={onToggleCode}
+              tint="#fdd663"
+            />
+            <ToolChip
+              active={preferences.mapsGrounding}
+              icon="map"
+              label="Maps"
+              onPress={onToggleMaps}
+              tint="#f28b82"
+            />
+          </View>
+        ) : null}
         {notice ? <Text style={styles.notice}>{notice}</Text> : null}
         <Text style={styles.disclaimer}>
           Quantum can make mistakes. Check important information.
@@ -213,6 +239,25 @@ const styles = StyleSheet.create({
     gap: 8,
     padding: 8,
   },
+  activeToolBadge: {
+    alignItems: "center",
+    backgroundColor: "#8ab4f8",
+    borderRadius: 8,
+    height: 16,
+    justifyContent: "center",
+    position: "absolute",
+    right: -3,
+    top: -3,
+    width: 16,
+  },
+  activeToolBadgeText: {
+    color: "#0d0f14",
+    fontSize: 9,
+    fontWeight: "900",
+  },
+  moreButtonWrap: {
+    position: "relative",
+  },
   notice: {
     color: "#fdd663",
     fontSize: 11,
@@ -240,8 +285,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 0,
     paddingVertical: 9,
   },
-  toolRail: {
-    flexGrow: 0,
-    marginBottom: 8,
+  toolMenu: {
+    alignItems: "center",
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+    paddingTop: 8,
   },
 });

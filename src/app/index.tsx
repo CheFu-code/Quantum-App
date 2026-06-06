@@ -1,5 +1,5 @@
 import { StatusBar } from "expo-status-bar";
-import { useCallback } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   FlatList,
   KeyboardAvoidingView,
@@ -10,18 +10,47 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { ChatComposer } from "@/components/quantum/ChatComposer";
+import { AccountMenu } from "@/components/quantum/AccountMenu";
 import { ConversationDrawer } from "@/components/quantum/ConversationDrawer";
 import { EmptyState } from "@/components/quantum/EmptyState";
 import { MessageBubble } from "@/components/quantum/MessageBubble";
+import { QuantumOnboarding } from "@/components/quantum/QuantumOnboarding";
 import { SettingsSheet } from "@/components/quantum/SettingsSheet";
 import { TopBar } from "@/components/quantum/TopBar";
 import { QUANTUM_CHAT_API_URL } from "@/constants/quantum";
 import { useQuantumChat } from "@/hooks/useQuantumChat";
+import {
+  hasCompletedOnboarding,
+  markOnboardingComplete,
+} from "@/lib/onboarding";
 import type { Message } from "@/types/quantum";
 
 export default function Index() {
   const chat = useQuantumChat();
   const { actions } = chat;
+  const [accountMenuOpen, setAccountMenuOpen] = useState(false);
+  const [onboardingVisible, setOnboardingVisible] = useState(false);
+
+  useEffect(() => {
+    let mounted = true;
+
+    hasCompletedOnboarding()
+      .then((completed) => {
+        if (mounted && !completed) setOnboardingVisible(true);
+      })
+      .catch(() => {
+        if (mounted) setOnboardingVisible(true);
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  const completeOnboarding = useCallback(() => {
+    setOnboardingVisible(false);
+    void markOnboardingComplete();
+  }, []);
 
   const renderMessage = useCallback(
     ({ item }: ListRenderItemInfo<Message>) => (
@@ -62,7 +91,7 @@ export default function Index() {
           onNewConversation={actions.startNewConversation}
           onAccountPress={() => {
             if (chat.authStatus === "authenticated") {
-              actions.setSettingsOpen(true);
+              setAccountMenuOpen(true);
               return;
             }
 
@@ -165,6 +194,20 @@ export default function Index() {
         onSignIn={() => void actions.openLogin()}
         onSignOut={() => void actions.signOut()}
         onWebSearchChange={actions.setWebSearchEnabled}
+      />
+
+      <AccountMenu
+        open={accountMenuOpen}
+        user={chat.sessionUser}
+        onClose={() => setAccountMenuOpen(false)}
+        onManageAccount={() => void actions.openAccount()}
+        onOpenSettings={() => actions.setSettingsOpen(true)}
+        onSignOut={() => void actions.signOut()}
+      />
+
+      <QuantumOnboarding
+        visible={onboardingVisible}
+        onDone={completeOnboarding}
       />
     </KeyboardAvoidingView>
   );

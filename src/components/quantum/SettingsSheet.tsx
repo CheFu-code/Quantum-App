@@ -249,14 +249,6 @@ export function SettingsSheet({
                 onPreferenceChange("showTimestamps", value)
               }
             />
-            <SwitchRow
-              icon="star"
-              label="Save conversations"
-              value={preferences.saveConversations}
-              onValueChange={(value) =>
-                onPreferenceChange("saveConversations", value)
-              }
-            />
 
             <SectionLabel label="Data" />
             <View style={styles.endpointBox}>

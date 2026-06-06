@@ -4,8 +4,8 @@
   "version": "1.0.0",
   "dependencies": {
     "@expo/ui": "~56.0.16",
-    "@react-native-async-storage/async-storage": "2.2.0",
     "@ronradtke/react-native-markdown-display": "^8.1.0",
+    "chefu-ui": "^0.1.0",
     "expo": "~56.0.9",
     "expo-auth-session": "~56.0.13",
     "expo-clipboard": "~56.0.4",
@@ -27,6 +27,7 @@
     "expo-symbols": "~56.0.6",
     "expo-system-ui": "~56.0.5",
     "expo-web-browser": "~56.0.5",
+    "lucide-react": "^1.17.0",
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "react-native": "0.85.3",

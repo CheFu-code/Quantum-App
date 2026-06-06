@@ -1,9 +1,5 @@
-import AsyncStorage from "@react-native-async-storage/async-storage";
-
 import { CHEFU_API_BASE } from "@/constants/quantum";
 import type { ChatThread, StoredThread } from "@/types/quantum";
-
-const STORAGE_KEY = "quantum-app-chat-threads";
 
 export function formatTime(date: Date) {
   const diff = Date.now() - date.getTime();
@@ -95,19 +91,6 @@ export function toStoredThreads(threads: ChatThread[]) {
       timestamp: message.timestamp.toISOString(),
     })),
   }));
-}
-
-export async function loadLocalConversations() {
-  const stored = await AsyncStorage.getItem(STORAGE_KEY);
-  return parseStoredThreads(stored);
-}
-
-export async function saveLocalConversations(threads: ChatThread[]) {
-  await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(toStoredThreads(threads)));
-}
-
-export async function clearLocalConversations() {
-  await AsyncStorage.removeItem(STORAGE_KEY);
 }
 
 export async function loadAccountConversations(accessToken: string) {

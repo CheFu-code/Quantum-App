@@ -53,7 +53,9 @@ export function ConversationDrawer({
             <QuantumLogo size={36} />
             <View style={styles.drawerTitleBlock}>
               <Text style={styles.drawerTitle}>Conversations</Text>
-              <Text style={styles.drawerSubtitle}>{totalThreads} saved locally</Text>
+              <Text style={styles.drawerSubtitle}>
+                {totalThreads} conversation{totalThreads === 1 ? "" : "s"}
+              </Text>
             </View>
             <IconButton icon="close" label="Close" onPress={onClose} />
           </View>
