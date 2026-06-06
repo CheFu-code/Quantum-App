@@ -27,6 +27,7 @@ export function ConversationDrawer({
   onDeleteThread,
   onFilterChange,
   onNewConversation,
+  onOpenSettings,
   onSearchChange,
   onSelectThread,
   onToggleStar,
@@ -41,6 +42,7 @@ export function ConversationDrawer({
   onDeleteThread: (threadId: string) => void;
   onFilterChange: (filter: ConversationFilter) => void;
   onNewConversation: () => void;
+  onOpenSettings: () => void;
   onSearchChange: (value: string) => void;
   onSelectThread: (threadId: string) => void;
   onToggleStar: (threadId: string) => void;
@@ -57,10 +59,16 @@ export function ConversationDrawer({
             </View>
             <IconButton icon="close" label="Close" onPress={onClose} />
           </View>
-          <Pressable onPress={onNewConversation} style={styles.newThreadButton}>
-            <QuantumIcon color="#0d0f14" name="add" size={17} />
-            <Text style={styles.newThreadText}>New conversation</Text>
-          </Pressable>
+          <View style={styles.drawerActionButtons}>
+            <Pressable onPress={onNewConversation} style={styles.newThreadButton}>
+              <QuantumIcon color="#0d0f14" name="add" size={17} />
+              <Text style={styles.newThreadText}>New conversation</Text>
+            </Pressable>
+            <Pressable onPress={onOpenSettings} style={styles.settingsButton}>
+              <QuantumIcon color="#8ab4f8" name="settings" size={17} />
+              <Text style={styles.settingsButtonText}>Settings</Text>
+            </Pressable>
+          </View>
           <View style={styles.searchBox}>
             <QuantumIcon color="#8a93a5" name="search" size={16} />
             <TextInput
@@ -167,6 +175,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     width: "82%",
   },
+  drawerActionButtons: {
+    flexDirection: "row",
+    gap: 10,
+    marginBottom: 13,
+  },
   drawerDismiss: {
     flex: 1,
   },
@@ -221,10 +234,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     backgroundColor: "#8ab4f8",
     borderRadius: 15,
+    flex: 1,
     flexDirection: "row",
     gap: 8,
     justifyContent: "center",
-    marginBottom: 13,
     padding: 13,
   },
   newThreadText: {
@@ -248,6 +261,23 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 14,
     minHeight: 42,
+  },
+  settingsButton: {
+    alignItems: "center",
+    backgroundColor: "rgba(138, 180, 248, 0.1)",
+    borderColor: "#8ab4f8",
+    borderRadius: 15,
+    borderWidth: 1,
+    flex: 1,
+    flexDirection: "row",
+    gap: 8,
+    justifyContent: "center",
+    padding: 13,
+  },
+  settingsButtonText: {
+    color: "#8ab4f8",
+    fontSize: 14,
+    fontWeight: "900",
   },
   threadActions: {
     alignItems: "center",
