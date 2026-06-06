@@ -1,5 +1,5 @@
 import { LinearGradient } from "expo-linear-gradient";
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { QuantumIcon } from "@/components/QuantumIcon";
 import { QuantumLogo } from "@/components/QuantumLogo";
@@ -15,7 +15,17 @@ export function EmptyState({
   if (isLoading) {
     return (
       <View style={styles.emptyState}>
-        <ActivityIndicator color="#8ab4f8" />
+        <View style={styles.skeletonLogo} />
+        <View style={styles.skeletonTitle} />
+        <View style={styles.skeletonSubtitle} />
+        <View style={styles.skeletonGrid}>
+          {[0, 1, 2].map((item) => (
+            <View key={item} style={styles.skeletonSuggestion}>
+              <View style={styles.skeletonIcon} />
+              <View style={styles.skeletonLine} />
+            </View>
+          ))}
+        </View>
       </View>
     );
   }
@@ -70,6 +80,56 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     marginBottom: 18,
     width: 86,
+  },
+  skeletonGrid: {
+    gap: 10,
+    maxWidth: 520,
+    width: "100%",
+  },
+  skeletonIcon: {
+    backgroundColor: "rgba(138, 180, 248, 0.14)",
+    borderRadius: 12,
+    height: 34,
+    width: 34,
+  },
+  skeletonLine: {
+    backgroundColor: "rgba(255, 255, 255, 0.08)",
+    borderRadius: 999,
+    flex: 1,
+    height: 13,
+  },
+  skeletonLogo: {
+    backgroundColor: "rgba(138, 180, 248, 0.12)",
+    borderRadius: 26,
+    height: 86,
+    marginBottom: 22,
+    width: 86,
+  },
+  skeletonSubtitle: {
+    backgroundColor: "rgba(255, 255, 255, 0.07)",
+    borderRadius: 999,
+    height: 13,
+    marginBottom: 24,
+    width: 190,
+  },
+  skeletonSuggestion: {
+    alignItems: "center",
+    backgroundColor: "#171b23",
+    borderColor: "rgba(255, 255, 255, 0.07)",
+    borderRadius: 16,
+    borderWidth: 1,
+    flexDirection: "row",
+    gap: 10,
+    minHeight: 58,
+    paddingHorizontal: 12,
+    width: "100%",
+  },
+  skeletonTitle: {
+    backgroundColor: "rgba(255, 255, 255, 0.1)",
+    borderRadius: 999,
+    height: 25,
+    marginBottom: 10,
+    width: 220,
   },
   emptyState: {
     alignItems: "center",

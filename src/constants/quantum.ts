@@ -16,40 +16,55 @@ const DEFAULT_CHAT_API_URL = "https://quantum.chefuinc.com/api/chat";
 const DEFAULT_CHEFU_API_URL = "https://api.chefuinc.com";
 const DEFAULT_CHEFU_ACCOUNT_URL = "https://myaccount.chefuinc.com";
 const DEFAULT_QUANTUM_OAUTH_CLIENT_ID = "quantum-mobile";
-const configuredChatApiUrl =
-  (typeof process !== "undefined"
-    ? process.env?.EXPO_PUBLIC_QUANTUM_CHAT_API_URL
-    : undefined) ||
-  (Constants.expoConfig?.extra as { quantumChatApiUrl?: string } | undefined)
-    ?.quantumChatApiUrl ||
-  DEFAULT_CHAT_API_URL;
-const configuredChefuAccountUrl =
-  (typeof process !== "undefined"
-    ? process.env?.EXPO_PUBLIC_CHEFU_ACCOUNT_URL
-    : undefined) ||
-  (Constants.expoConfig?.extra as { chefuAccountUrl?: string } | undefined)
-    ?.chefuAccountUrl ||
-  DEFAULT_CHEFU_ACCOUNT_URL;
-const configuredChefuApiUrl =
-  (typeof process !== "undefined"
-    ? process.env?.EXPO_PUBLIC_CHEFU_API_URL
-    : undefined) ||
-  (Constants.expoConfig?.extra as { chefuApiUrl?: string } | undefined)
-    ?.chefuApiUrl ||
-  DEFAULT_CHEFU_API_URL;
-const configuredQuantumOauthClientId =
-  (typeof process !== "undefined"
-    ? process.env?.EXPO_PUBLIC_QUANTUM_OAUTH_CLIENT_ID
-    : undefined) ||
-  (Constants.expoConfig?.extra as { quantumOauthClientId?: string } | undefined)
-    ?.quantumOauthClientId ||
-  DEFAULT_QUANTUM_OAUTH_CLIENT_ID;
+const expoExtra = Constants.expoConfig?.extra as
+  | {
+      chefuAccountUrl?: string;
+      chefuApiUrl?: string;
+      quantumChatApiUrl?: string;
+      quantumOauthClientId?: string;
+    }
+  | undefined;
 
-export const QUANTUM_CHAT_API_URL = configuredChatApiUrl.trim();
-export const CHEFU_API_BASE = configuredChefuApiUrl.trim().replace(/\/$/, "");
-export const CHEFU_ACCOUNT_BASE = configuredChefuAccountUrl.trim().replace(/\/$/, "");
+const configuredChatApiUrl = readPublicConfig(
+  "EXPO_PUBLIC_QUANTUM_CHAT_API_URL",
+  expoExtra?.quantumChatApiUrl,
+  DEFAULT_CHAT_API_URL,
+);
+const configuredChefuAccountUrl = readPublicConfig(
+  "EXPO_PUBLIC_CHEFU_ACCOUNT_URL",
+  expoExtra?.chefuAccountUrl,
+  DEFAULT_CHEFU_ACCOUNT_URL,
+);
+const configuredChefuApiUrl = readPublicConfig(
+  "EXPO_PUBLIC_CHEFU_API_URL",
+  expoExtra?.chefuApiUrl,
+  DEFAULT_CHEFU_API_URL,
+);
+const configuredQuantumOauthClientId = readPublicConfig(
+  "EXPO_PUBLIC_QUANTUM_OAUTH_CLIENT_ID",
+  expoExtra?.quantumOauthClientId,
+  DEFAULT_QUANTUM_OAUTH_CLIENT_ID,
+);
+
+export const QUANTUM_CHAT_API_URL = normalizePublicUrl(
+  configuredChatApiUrl,
+  DEFAULT_CHAT_API_URL,
+  { allowPath: true },
+);
+export const CHEFU_API_BASE = normalizePublicUrl(
+  configuredChefuApiUrl,
+  DEFAULT_CHEFU_API_URL,
+  { allowPath: false },
+);
+export const CHEFU_ACCOUNT_BASE = normalizePublicUrl(
+  configuredChefuAccountUrl,
+  DEFAULT_CHEFU_ACCOUNT_URL,
+  { allowPath: false },
+);
 export const CHEFU_ACCOUNT_MANAGE_HREF = `${CHEFU_ACCOUNT_BASE}/account`;
-export const QUANTUM_OAUTH_CLIENT_ID = configuredQuantumOauthClientId.trim();
+export const QUANTUM_OAUTH_CLIENT_ID = normalizeOauthClientId(
+  configuredQuantumOauthClientId,
+);
 export const QUANTUM_OAUTH_SCOPES = [
   "openid",
   "profile",
@@ -152,7 +167,6 @@ export const DEFAULT_CHAT_PREFERENCES: ChatPreferences = {
   autoScroll: true,
   compactMessages: false,
   codeExecution: false,
-  enterToSend: true,
   fileSearch: false,
   mapsGrounding: false,
   responseStyle: "balanced",
@@ -160,10 +174,6 @@ export const DEFAULT_CHAT_PREFERENCES: ChatPreferences = {
   showTimestamps: true,
   urlContext: true,
 };
-
-export function resolveStoredModel(value: string | null): QuantumModel {
-  return MODELS.find((model) => model.id === value) || MODELS[1];
-}
 
 export function resolveResponseStyle(value: unknown): ResponseStyle {
   return RESPONSE_STYLES.some((style) => style.id === value)
@@ -190,4 +200,58 @@ export function isSupportedAttachment({
 
   const extension = name.split(".").pop()?.toLowerCase();
   return extension ? SUPPORTED_ATTACHMENT_EXTENSIONS.has(extension) : false;
+}
+
+function readPublicConfig(
+  envName: string,
+  expoValue: string | undefined,
+  fallback: string,
+) {
+  return (
+    (typeof process !== "undefined" ? process.env?.[envName] : undefined) ||
+    expoValue ||
+    fallback
+  );
+}
+
+function normalizePublicUrl(
+  value: string,
+  fallback: string,
+  { allowPath }: { allowPath: boolean },
+) {
+  try {
+    const url = new URL(value.trim());
+
+    if (
+      url.username ||
+      url.password ||
+      url.hash ||
+      (url.protocol !== "https:" && !isLocalHttpUrl(url))
+    ) {
+      throw new Error("Unsafe public URL.");
+    }
+
+    if (!allowPath) {
+      url.pathname = "";
+      url.search = "";
+    }
+
+    return url.toString().replace(/\/$/, "");
+  } catch {
+    return fallback.replace(/\/$/, "");
+  }
+}
+
+function isLocalHttpUrl(url: URL) {
+  return (
+    url.protocol === "http:" &&
+    ["localhost", "127.0.0.1", "10.0.2.2"].includes(url.hostname)
+  );
+}
+
+function normalizeOauthClientId(value: string) {
+  const normalized = value.trim();
+  return /^[A-Za-z0-9._:-]{3,80}$/.test(normalized)
+    ? normalized
+    : DEFAULT_QUANTUM_OAUTH_CLIENT_ID;
 }

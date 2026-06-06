@@ -8,9 +8,7 @@ import {
   type QuantumModel,
 } from "@/constants/quantum";
 import { pickQuantumAttachments } from "@/lib/attachments";
-import {
-  deleteAccountConversation,
-} from "@/lib/conversations";
+import { deleteAccountConversation } from "@/lib/conversations";
 import { requestQuantumReply } from "@/lib/quantumClient";
 import {
   applyMessageFeedback,
@@ -47,7 +45,6 @@ export function useQuantumChatActions({
   activeThread,
   activeThreadId,
   attachments,
-  authStatus,
   input,
   isTyping,
   preferences,
@@ -65,7 +62,6 @@ export function useQuantumChatActions({
   setSettingsOpen,
   setSidebarOpen,
   setThreads,
-  setUnsavedWarningOpen,
   setWebSearchEnabled,
   threads,
   webSearchEnabled,
@@ -79,7 +75,6 @@ export function useQuantumChatActions({
   activeThread?: ChatThread;
   activeThreadId: string;
   attachments: ImageAttachment[];
-  authStatus: "checking" | "authenticated" | "unauthenticated";
   input: string;
   isTyping: boolean;
   preferences: ChatPreferences;
@@ -97,7 +92,6 @@ export function useQuantumChatActions({
   setSettingsOpen: StateSetter<boolean>;
   setSidebarOpen: StateSetter<boolean>;
   setThreads: StateSetter<ChatThread[]>;
-  setUnsavedWarningOpen: StateSetter<boolean>;
   setWebSearchEnabled: StateSetter<boolean>;
   threads: ChatThread[];
   webSearchEnabled: boolean;
@@ -318,22 +312,6 @@ export function useQuantumChatActions({
   }
 
   function startNewConversation() {
-    // If user has messages and is not signed in, show warning
-    if (messages.length > 0 && authStatus !== "authenticated") {
-      setUnsavedWarningOpen(true);
-      return;
-    }
-
-    // Otherwise proceed normally
-    stopResponse();
-    setActiveThreadId("");
-    setInput("");
-    setAttachments([]);
-    setNotice("");
-    setSidebarOpen(false);
-  }
-
-  function proceedNewConversation() {
     stopResponse();
     setActiveThreadId("");
     setInput("");
@@ -341,7 +319,6 @@ export function useQuantumChatActions({
     setNotice(authStatus === "guest" ? "Started a guest conversation." : "");
     setSettingsOpen(false);
     setSidebarOpen(false);
-    setUnsavedWarningOpen(false);
   }
 
   function deleteThread(threadId: string) {
@@ -423,7 +400,6 @@ export function useQuantumChatActions({
     openAccount,
     openLogin,
     pickFiles,
-    proceedNewConversation,
     rateMessage,
     regenerateResponse,
     removeAttachment,

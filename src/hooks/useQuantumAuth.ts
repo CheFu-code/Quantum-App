@@ -1,5 +1,6 @@
 import * as WebBrowser from "expo-web-browser";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { AppState } from "react-native";
 
 import { CHEFU_ACCOUNT_MANAGE_HREF } from "@/constants/quantum";
 import {
@@ -9,7 +10,11 @@ import {
   saveStoredAuthSession,
   type StoredAuthSession,
 } from "@/lib/authStorage";
-import { startQuantumSignIn } from "@/lib/oauth";
+import {
+  refreshQuantumSession,
+  revokeQuantumSession,
+  startQuantumSignIn,
+} from "@/lib/oauth";
 import type { AuthStatus } from "@/types/quantum";
 
 export function useQuantumAuth() {
@@ -17,33 +22,53 @@ export function useQuantumAuth() {
   const [authStatus, setAuthStatus] = useState<AuthStatus>("checking");
   const [authNotice, setAuthNotice] = useState("");
 
-  useEffect(() => {
-    let mounted = true;
+  const restoreStoredSession = useCallback(async () => {
+    setAuthStatus("checking");
 
-    loadStoredAuthSession()
-      .then((storedSession) => {
-        if (!mounted) return;
+    try {
+      const storedSession = await loadStoredAuthSession();
 
-        if (!isStoredAuthSessionFresh(storedSession)) {
-          setSession(null);
-          setAuthStatus("guest");
-          if (storedSession) void clearStoredAuthSession();
+      if (!isStoredAuthSessionFresh(storedSession)) {
+        const refreshedSession = await refreshStoredSession(storedSession);
+
+        if (refreshedSession) {
+          setSession(refreshedSession);
+          setAuthStatus("authenticated");
           return;
         }
 
-        setSession(storedSession);
-        setAuthStatus("authenticated");
-      })
-      .catch(() => {
-        if (!mounted) return;
         setSession(null);
         setAuthStatus("guest");
-      });
+        if (storedSession) void clearStoredAuthSession();
+        return;
+      }
 
-    return () => {
-      mounted = false;
-    };
+      setSession(storedSession);
+      setAuthStatus("authenticated");
+    } catch {
+      setSession(null);
+      setAuthStatus("guest");
+    }
   }, []);
+
+  useEffect(() => {
+    void restoreStoredSession();
+  }, [restoreStoredSession]);
+
+  useEffect(() => {
+    const subscription = AppState.addEventListener("change", (nextState) => {
+      if (nextState === "active") {
+        void restoreStoredSession();
+        return;
+      }
+
+      setSession(null);
+      setAuthStatus("checking");
+      setAuthNotice("");
+    });
+
+    return () => subscription.remove();
+  }, [restoreStoredSession]);
 
   useEffect(() => {
     if (!session) return;
@@ -52,14 +77,27 @@ export function useQuantumAuth() {
       0,
       (session.expiresAt - Math.floor(Date.now() / 1000) - 30) * 1000,
     );
-    const timeout = setTimeout(() => {
+    let active = true;
+    const timeout = setTimeout(async () => {
+      const refreshedSession = await refreshStoredSession(session);
+      if (!active) return;
+
+      if (refreshedSession) {
+        setSession(refreshedSession);
+        setAuthStatus("authenticated");
+        return;
+      }
+
       setSession(null);
       setAuthStatus("guest");
       setAuthNotice("Your CheFu session expired. Sign in again to sync.");
       void clearStoredAuthSession();
     }, delay);
 
-    return () => clearTimeout(timeout);
+    return () => {
+      active = false;
+      clearTimeout(timeout);
+    };
   }, [session]);
 
   const signIn = useCallback(async () => {
@@ -89,11 +127,12 @@ export function useQuantumAuth() {
   }, [session]);
 
   const signOut = useCallback(async () => {
+    await revokeQuantumSession(session).catch(() => undefined);
     await clearStoredAuthSession();
     setSession(null);
     setAuthStatus("guest");
     setAuthNotice("Signed out.");
-  }, []);
+  }, [session]);
 
   const openAccount = useCallback(async () => {
     await WebBrowser.openBrowserAsync(CHEFU_ACCOUNT_MANAGE_HREF);
@@ -119,4 +158,17 @@ export function useQuantumAuth() {
       signOut,
     ],
   );
+}
+
+async function refreshStoredSession(session: StoredAuthSession | null) {
+  if (!session?.refreshToken) return null;
+
+  try {
+    const refreshedSession = await refreshQuantumSession(session);
+    if (refreshedSession) await saveStoredAuthSession(refreshedSession);
+    return refreshedSession;
+  } catch {
+    await clearStoredAuthSession();
+    return null;
+  }
 }

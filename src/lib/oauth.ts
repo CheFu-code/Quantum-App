@@ -8,12 +8,14 @@ import {
   QUANTUM_OAUTH_SCOPES,
 } from "@/constants/quantum";
 import type { StoredAuthSession } from "@/lib/authStorage";
+import { assertSecureBackendUrl } from "@/lib/secureTransport";
 import type { SessionUser } from "@/types/quantum";
 
 WebBrowser.maybeCompleteAuthSession();
 
 const AUTH_DISCOVERY = {
   authorizationEndpoint: `${CHEFU_API_BASE}/oauth/authorize`,
+  revocationEndpoint: `${CHEFU_API_BASE}/oauth/revoke`,
   tokenEndpoint: `${CHEFU_API_BASE}/oauth/token`,
   userInfoEndpoint: `${CHEFU_API_BASE}/oauth/userinfo`,
 };
@@ -33,6 +35,7 @@ type OAuthUserInfo = {
 };
 
 export async function startQuantumSignIn() {
+  assertTrustedDiscovery();
   const nonce = await randomOAuthParam(32);
   const state = await randomOAuthParam(32);
   const request = new AuthSession.AuthRequest({
@@ -58,6 +61,10 @@ export async function startQuantumSignIn() {
   const code = result.params.code;
   const codeVerifier = request.codeVerifier;
 
+  if (result.params.state !== state) {
+    throw new Error("Sign in response failed security validation.");
+  }
+
   if (!code || !codeVerifier) {
     throw new Error("Sign in response did not include the expected code.");
   }
@@ -73,6 +80,10 @@ export async function startQuantumSignIn() {
     },
     AUTH_DISCOVERY,
   );
+  if (!tokenResponse.accessToken || !tokenResponse.expiresIn) {
+    throw new Error("CheFu Account did not return a valid access token.");
+  }
+
   validateIdTokenClaims(tokenResponse.idToken, nonce);
   const userInfo = await fetchQuantumUserInfo(tokenResponse.accessToken);
   const user = normalizeSessionUser(userInfo);
@@ -87,17 +98,79 @@ export async function startQuantumSignIn() {
       tokenResponse.issuedAt + (tokenResponse.expiresIn || 60 * 60),
     idToken: tokenResponse.idToken,
     issuedAt: tokenResponse.issuedAt,
+    refreshToken: tokenResponse.refreshToken,
     scope: tokenResponse.scope,
     tokenType: tokenResponse.tokenType,
     user,
   } satisfies StoredAuthSession;
 }
 
+export async function refreshQuantumSession(session: StoredAuthSession) {
+  if (!session.refreshToken) return null;
+  assertTrustedDiscovery();
+
+  const tokenResponse = await AuthSession.refreshAsync(
+    {
+      clientId: QUANTUM_OAUTH_CLIENT_ID,
+      refreshToken: session.refreshToken,
+      scopes: QUANTUM_OAUTH_SCOPES,
+    },
+    AUTH_DISCOVERY,
+  );
+
+  if (!tokenResponse.accessToken || !tokenResponse.expiresIn) {
+    throw new Error("CheFu Account did not refresh the access token.");
+  }
+
+  const userInfo = await fetchQuantumUserInfo(tokenResponse.accessToken);
+  const user = normalizeSessionUser(userInfo);
+
+  if (!user) {
+    throw new Error("CheFu Account did not return a Quantum user.");
+  }
+
+  return {
+    accessToken: tokenResponse.accessToken,
+    expiresAt: tokenResponse.issuedAt + tokenResponse.expiresIn,
+    idToken: tokenResponse.idToken,
+    issuedAt: tokenResponse.issuedAt,
+    refreshToken: tokenResponse.refreshToken || session.refreshToken,
+    scope: tokenResponse.scope || session.scope,
+    tokenType: tokenResponse.tokenType,
+    user,
+  } satisfies StoredAuthSession;
+}
+
+export async function revokeQuantumSession(session: StoredAuthSession | null) {
+  const token = session?.refreshToken || session?.accessToken;
+  if (!token) return;
+  assertTrustedDiscovery();
+
+  await AuthSession.revokeAsync(
+    {
+      clientId: QUANTUM_OAUTH_CLIENT_ID,
+      token,
+      tokenTypeHint: session?.refreshToken
+        ? AuthSession.TokenTypeHint.RefreshToken
+        : AuthSession.TokenTypeHint.AccessToken,
+    },
+    AUTH_DISCOVERY,
+  );
+}
+
 export async function fetchQuantumUserInfo(accessToken: string) {
+  assertSecureBackendUrl(AUTH_DISCOVERY.userInfoEndpoint);
   return AuthSession.fetchUserInfoAsync(
     { accessToken },
     AUTH_DISCOVERY,
   ) as Promise<OAuthUserInfo>;
+}
+
+function assertTrustedDiscovery() {
+  assertSecureBackendUrl(AUTH_DISCOVERY.authorizationEndpoint);
+  assertSecureBackendUrl(AUTH_DISCOVERY.revocationEndpoint);
+  assertSecureBackendUrl(AUTH_DISCOVERY.tokenEndpoint);
+  assertSecureBackendUrl(AUTH_DISCOVERY.userInfoEndpoint);
 }
 
 function normalizeSessionUser(userInfo: OAuthUserInfo): SessionUser | null {

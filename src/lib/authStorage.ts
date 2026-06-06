@@ -13,6 +13,7 @@ export type StoredAuthSession = {
   expiresAt: number;
   issuedAt: number;
   idToken?: string;
+  refreshToken?: string;
   scope?: string;
   tokenType?: string;
   user: SessionUser;
@@ -68,6 +69,7 @@ function parseStoredAuthSession(value: string | null): StoredAuthSession | null 
       expiresAt: parsed.expiresAt,
       idToken: parsed.idToken,
       issuedAt: parsed.issuedAt,
+      refreshToken: parsed.refreshToken,
       scope: parsed.scope,
       tokenType: parsed.tokenType,
       user: {

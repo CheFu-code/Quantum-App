@@ -2,6 +2,7 @@ import {
   QUANTUM_CHAT_API_URL,
   type QuantumModel,
 } from "@/constants/quantum";
+import { assertSecureBackendUrl } from "@/lib/secureTransport";
 import type {
   ChatPreferences,
   ImageAttachment,
@@ -15,6 +16,8 @@ type QuantumResponsePayload = {
   message?: string;
   metadata?: MessageMetadata;
 };
+
+const QUANTUM_REQUEST_TIMEOUT_MS = 60_000;
 
 export async function requestQuantumReply({
   accessToken,
@@ -35,36 +38,50 @@ export async function requestQuantumReply({
   signal: AbortSignal;
   webSearchEnabled: boolean;
 }) {
-  const response = await fetch(QUANTUM_CHAT_API_URL, {
-    method: "POST",
-    headers: {
-      Accept: "application/json",
-      "Content-Type": "application/json",
-      "x-chefu-app": "quantum",
-      ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
-    },
-    signal,
-    body: JSON.stringify({
-      attachments: attachments.map(({ data, mimeType, name, size }) => ({
-        data,
-        mimeType,
-        name,
-        size,
-      })),
-      history: buildVisibleHistory(messages),
-      message: message || "Describe the attached file.",
-      model: selectedModel.id,
-      responseStyle: preferences.responseStyle,
-      serviceTier: preferences.serviceTier,
-      tools: {
-        codeExecution: preferences.codeExecution,
-        fileSearch: preferences.fileSearch,
-        mapsGrounding: preferences.mapsGrounding,
-        urlContext: preferences.urlContext,
+  assertSecureBackendUrl(QUANTUM_CHAT_API_URL);
+  const requestSignal = createTimeoutSignal(signal, QUANTUM_REQUEST_TIMEOUT_MS);
+  let response: Response;
+
+  try {
+    response = await fetch(QUANTUM_CHAT_API_URL, {
+      method: "POST",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+        "x-chefu-app": "quantum",
+        ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
       },
-      webSearch: webSearchEnabled,
-    }),
-  });
+      signal: requestSignal.signal,
+      body: JSON.stringify({
+        attachments: attachments.map(({ data, mimeType, name, size }) => ({
+          data,
+          mimeType,
+          name,
+          size,
+        })),
+        history: buildVisibleHistory(messages),
+        message: message || "Describe the attached file.",
+        model: selectedModel.id,
+        responseStyle: preferences.responseStyle,
+        serviceTier: preferences.serviceTier,
+        tools: {
+          codeExecution: preferences.codeExecution,
+          fileSearch: preferences.fileSearch,
+          mapsGrounding: preferences.mapsGrounding,
+          urlContext: preferences.urlContext,
+        },
+        webSearch: webSearchEnabled,
+      }),
+    });
+  } catch (error) {
+    if (requestSignal.timedOut() && !signal.aborted) {
+      throw new Error("Quantum timed out. Please try again.");
+    }
+
+    throw error;
+  } finally {
+    requestSignal.cleanup();
+  }
 
   const data = (await response.json().catch(() => null)) as
     | (QuantumResponsePayload & { error?: string })
@@ -81,6 +98,33 @@ export async function requestQuantumReply({
     generatedImages: normalizeGeneratedImages(data?.images),
     message: data?.message || "",
     metadata: data?.metadata,
+  };
+}
+
+function createTimeoutSignal(signal: AbortSignal, timeoutMs: number) {
+  const controller = new AbortController();
+  let timeoutHit = false;
+  const abortFromCaller = () => controller.abort();
+  const timeout = setTimeout(() => {
+    timeoutHit = true;
+    controller.abort();
+  }, timeoutMs);
+
+  if (signal.aborted) {
+    abortFromCaller();
+  } else {
+    signal.addEventListener("abort", abortFromCaller, { once: true });
+  }
+
+  return {
+    cleanup() {
+      clearTimeout(timeout);
+      signal.removeEventListener("abort", abortFromCaller);
+    },
+    signal: controller.signal,
+    timedOut() {
+      return timeoutHit;
+    },
   };
 }
 

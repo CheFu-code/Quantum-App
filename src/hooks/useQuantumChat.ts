@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { type FlatList } from "react-native";
+import { AppState, type FlatList } from "react-native";
 
 import {
   DEFAULT_CHAT_PREFERENCES,
@@ -47,7 +47,6 @@ export function useQuantumChat() {
   const [searchQuery, setSearchQuery] = useState("");
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [notice, setNotice] = useState("");
-  const [unsavedWarningOpen, setUnsavedWarningOpen] = useState(false);
   const listRef = useRef<FlatList<Message>>(null);
   const activeRequestRef = useRef<ActiveRequest | null>(null);
   const auth = useQuantumAuth();
@@ -80,8 +79,8 @@ export function useQuantumChat() {
             : [];
 
         if (!mounted) return;
-        setThreads(accountThreads);
-        setActiveThreadId(accountThreads[0]?.id || "");
+        setThreads(savedThreads);
+        setActiveThreadId(savedThreads[0]?.id || "");
       } catch {
         if (!mounted) return;
         setThreads([]);
@@ -113,8 +112,8 @@ export function useQuantumChat() {
 
     const accessToken = auth.accessToken;
     const timeout = setTimeout(() => {
-      if (auth.authStatus === "authenticated" && auth.accessToken) {
-        saveAccountConversations(auth.accessToken, threads).catch(() => {
+      if (auth.authStatus === "authenticated") {
+        saveAccountConversations(accessToken, threads).catch(() => {
           setNotice("Could not sync account conversations.");
         });
       }
@@ -132,6 +131,28 @@ export function useQuantumChat() {
   useEffect(() => {
     if (auth.authNotice) setNotice(auth.authNotice);
   }, [auth.authNotice]);
+
+  useEffect(() => {
+    const subscription = AppState.addEventListener("change", (nextState) => {
+      if (nextState === "active") return;
+
+      activeRequestRef.current?.controller.abort();
+      activeRequestRef.current = null;
+      setThreads([]);
+      setActiveThreadId("");
+      setInput("");
+      setAttachments([]);
+      setCopiedId(null);
+      setHydrated(false);
+      setIsTyping(false);
+      setNotice("");
+      setSearchQuery("");
+      setSettingsOpen(false);
+      setSidebarOpen(false);
+    });
+
+    return () => subscription.remove();
+  }, []);
 
   useEffect(() => {
     if (!preferences.autoScroll || messages.length === 0) return;
@@ -167,11 +188,9 @@ export function useQuantumChat() {
     setSettingsOpen,
     setSidebarOpen,
     setThreads,
-    setUnsavedWarningOpen,
     setWebSearchEnabled,
     threads,
     webSearchEnabled,
-    authStatus: auth.authStatus,
     onOpenAccount: auth.openAccount,
     onSignIn: auth.signIn,
     onSignOut: auth.signOut,
@@ -196,7 +215,6 @@ export function useQuantumChat() {
     settingsOpen,
     sidebarOpen,
     threads,
-    unsavedWarningOpen,
     webSearchEnabled,
     actions,
     authStatus: auth.authStatus,

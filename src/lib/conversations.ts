@@ -1,4 +1,5 @@
 import { CHEFU_API_BASE } from "@/constants/quantum";
+import { secureBackendFetch } from "@/lib/secureTransport";
 import type { ChatThread, StoredThread } from "@/types/quantum";
 
 export function formatTime(date: Date) {
@@ -94,9 +95,12 @@ export function toStoredThreads(threads: ChatThread[]) {
 }
 
 export async function loadAccountConversations(accessToken: string) {
-  const response = await fetch(`${CHEFU_API_BASE}/quantum/conversations`, {
-    headers: accountHeaders(accessToken),
-  });
+  const response = await secureBackendFetch(
+    `${CHEFU_API_BASE}/quantum/conversations`,
+    {
+      headers: accountHeaders(accessToken),
+    },
+  );
 
   if (!response.ok) {
     throw new Error("Could not load account conversations.");
@@ -114,14 +118,17 @@ export async function saveAccountConversations(
   threads: ChatThread[],
 ) {
   if (threads.length === 0) {
-    const response = await fetch(`${CHEFU_API_BASE}/quantum/conversations`, {
-      body: JSON.stringify({ conversations: [] }),
-      headers: {
-        "Content-Type": "application/json",
-        ...accountHeaders(accessToken),
+    const response = await secureBackendFetch(
+      `${CHEFU_API_BASE}/quantum/conversations`,
+      {
+        body: JSON.stringify({ conversations: [] }),
+        headers: {
+          "Content-Type": "application/json",
+          ...accountHeaders(accessToken),
+        },
+        method: "PUT",
       },
-      method: "PUT",
-    });
+    );
 
     if (!response.ok) {
       throw new Error("Could not clear account conversations.");
@@ -132,7 +139,7 @@ export async function saveAccountConversations(
 
   await Promise.all(
     toStoredThreads(threads).map(async (conversation) => {
-      const response = await fetch(
+      const response = await secureBackendFetch(
         `${CHEFU_API_BASE}/quantum/conversations/${encodeURIComponent(conversation.id)}`,
         {
           body: JSON.stringify({ conversation }),
@@ -155,7 +162,7 @@ export async function deleteAccountConversation(
   accessToken: string,
   threadId: string,
 ) {
-  const response = await fetch(
+  const response = await secureBackendFetch(
     `${CHEFU_API_BASE}/quantum/conversations/${encodeURIComponent(threadId)}`,
     {
       headers: accountHeaders(accessToken),
