@@ -47,6 +47,7 @@ export function useQuantumChat() {
   const [searchQuery, setSearchQuery] = useState("");
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [notice, setNotice] = useState("");
+  const [unsavedWarningOpen, setUnsavedWarningOpen] = useState(false);
   const listRef = useRef<FlatList<Message>>(null);
   const activeRequestRef = useRef<ActiveRequest | null>(null);
   const threadsRef = useRef<ChatThread[]>([]);
@@ -90,11 +91,9 @@ export function useQuantumChat() {
         if (!mounted) return;
         setThreads([]);
         setActiveThreadId("");
-        setNotice(
-          auth.authStatus === "authenticated"
-            ? "Could not load account conversations."
-            : "Please sign in to load conversations.",
-        );
+        if (auth.authStatus === "authenticated") {
+          setNotice("Could not load account conversations.");
+        }
       } finally {
         if (mounted) setHydrated(true);
       }
@@ -165,9 +164,11 @@ export function useQuantumChat() {
     setSettingsOpen,
     setSidebarOpen,
     setThreads,
+    setUnsavedWarningOpen,
     setWebSearchEnabled,
     threads,
     webSearchEnabled,
+    authStatus: auth.authStatus,
     onOpenAccount: auth.openAccount,
     onSignIn: auth.signIn,
     onSignOut: auth.signOut,
@@ -192,6 +193,7 @@ export function useQuantumChat() {
     settingsOpen,
     sidebarOpen,
     threads,
+    unsavedWarningOpen,
     webSearchEnabled,
     actions,
     authStatus: auth.authStatus,
