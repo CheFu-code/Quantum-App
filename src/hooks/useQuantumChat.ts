@@ -47,6 +47,7 @@ export function useQuantumChat() {
   const [searchQuery, setSearchQuery] = useState("");
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [notice, setNotice] = useState("");
+  const [unsavedWarningOpen, setUnsavedWarningOpen] = useState(false);
   const listRef = useRef<FlatList<Message>>(null);
   const activeRequestRef = useRef<ActiveRequest | null>(null);
   const auth = useQuantumAuth();
@@ -73,13 +74,10 @@ export function useQuantumChat() {
       setHydrated(false);
 
       try {
-        let accountThreads: ChatThread[] = [];
-
-        if (auth.authStatus === "authenticated" && auth.accessToken) {
-          accountThreads = await loadAccountConversations(
-            auth.accessToken,
-          );
-        }
+        const savedThreads =
+          auth.authStatus === "authenticated" && auth.accessToken
+            ? await loadAccountConversations(auth.accessToken)
+            : [];
 
         if (!mounted) return;
         setThreads(accountThreads);
@@ -115,9 +113,11 @@ export function useQuantumChat() {
 
     const accessToken = auth.accessToken;
     const timeout = setTimeout(() => {
-      saveAccountConversations(accessToken, threads).catch(() => {
-        setNotice("Could not sync account conversations.");
-      });
+      if (auth.authStatus === "authenticated" && auth.accessToken) {
+        saveAccountConversations(auth.accessToken, threads).catch(() => {
+          setNotice("Could not sync account conversations.");
+        });
+      }
     }, 600);
 
     return () => clearTimeout(timeout);
@@ -167,9 +167,11 @@ export function useQuantumChat() {
     setSettingsOpen,
     setSidebarOpen,
     setThreads,
+    setUnsavedWarningOpen,
     setWebSearchEnabled,
     threads,
     webSearchEnabled,
+    authStatus: auth.authStatus,
     onOpenAccount: auth.openAccount,
     onSignIn: auth.signIn,
     onSignOut: auth.signOut,
@@ -194,6 +196,7 @@ export function useQuantumChat() {
     settingsOpen,
     sidebarOpen,
     threads,
+    unsavedWarningOpen,
     webSearchEnabled,
     actions,
     authStatus: auth.authStatus,

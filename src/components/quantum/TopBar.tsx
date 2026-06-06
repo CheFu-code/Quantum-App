@@ -7,7 +7,6 @@ import { MODELS, type QuantumModel } from "@/constants/quantum";
 import type { AuthStatus, ChatThread, SessionUser } from "@/types/quantum";
 
 export function TopBar({
-  activeThread,
   authStatus,
   conversationCount,
   isTyping,
@@ -15,11 +14,9 @@ export function TopBar({
   sessionUser,
   onNewConversation,
   onAccountPress,
-  onOpenSettings,
   onOpenSidebar,
   onSelectModel,
 }: {
-  activeThread?: ChatThread;
   authStatus: AuthStatus;
   conversationCount: number;
   isTyping: boolean;
@@ -27,7 +24,6 @@ export function TopBar({
   sessionUser: SessionUser | null;
   onNewConversation: () => void;
   onAccountPress: () => void;
-  onOpenSettings: () => void;
   onOpenSidebar: () => void;
   onSelectModel: (model: QuantumModel) => void;
 }) {
@@ -48,38 +44,19 @@ export function TopBar({
         <QuantumLogo size={34} />
         <View style={styles.topTitleBlock}>
           <Text numberOfLines={1} style={styles.appTitle}>
-            {activeThread?.title || "Quantum"}
+            Quantum
           </Text>
           <Text numberOfLines={1} style={styles.appSubtitle}>
             {subtitle}
           </Text>
         </View>
         <IconButton icon="add" label="New" onPress={onNewConversation} />
-        {authStatus === "authenticated" && sessionUser ? (
-          <Pressable
-            accessibilityLabel="Open account menu"
-            onPress={onAccountPress}
-            style={styles.avatarButton}
-          >
-            {sessionUser.photoURL ? (
-              <Image
-                contentFit="cover"
-                source={{ uri: sessionUser.photoURL }}
-                style={styles.avatarImage}
-              />
-            ) : (
-              <Text style={styles.avatarText}>{getInitials(sessionUser)}</Text>
-            )}
-          </Pressable>
-        ) : (
-          <IconButton
-            icon="account"
-            label={authStatus === "checking" ? "Checking account" : "Sign in"}
-            onPress={onAccountPress}
-            tint="#8ab4f8"
-          />
-        )}
-        <IconButton icon="settings" label="Settings" onPress={onOpenSettings} />
+        <IconButton
+          icon="account"
+          label={authStatus === "authenticated" ? "Account" : "Sign in"}
+          onPress={onAccountPress}
+          tint={authStatus === "authenticated" ? "#81c995" : "#8ab4f8"}
+        />
       </View>
       <ScrollView
         contentContainerStyle={styles.modelRailContent}
