@@ -73,6 +73,12 @@ jobs:
 
           sdkmanager "${packages[@]}"
 
+      - name: Install dependencies
+        run: npm install --legacy-peer-deps --include=dev
+
+      - name: Generate native code
+        run: npx expo prebuild --platform android
+
       - name: Decode keystore
         id: decode_keystore
         run: |
@@ -80,12 +86,6 @@ jobs:
           echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > "$KEYSTORE_PATH"
           test -s "$KEYSTORE_PATH"
           echo "keystore_path=$KEYSTORE_PATH" >> $GITHUB_OUTPUT
-
-      - name: Install dependencies
-        run: npm install --legacy-peer-deps --include=dev
-
-      - name: Generate native code
-        run: npx expo prebuild --platform android
 
       - name: Validate Expo config
         run: npx expo config --type public
