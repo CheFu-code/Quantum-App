@@ -1,0 +1,194 @@
+name: Android Release Build
+
+on:
+  workflow_dispatch:
+    inputs:
+      architectures:
+        description: "Android ABIs to build"
+        required: false
+        default: "armeabi-v7a,arm64-v8a,x86,x86_64"
+      release_name:
+        description: "Release name/version"
+        required: false
+        default: "release-build"
+  push:
+    branches:
+      - main
+      - production
+    tags:
+      - 'v*'
+
+concurrency:
+  group: android-release-build-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build-release:
+    name: Build Android Release APK
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+
+    env:
+      NODE_ENV: production
+      EXPO_NO_TELEMETRY: "1"
+      SENTRY_DISABLE_AUTO_UPLOAD: "true"
+      GRADLE_OPTS: "-Dorg.gradle.daemon=false -Dorg.gradle.jvmargs=-Xmx4g"
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android packages
+        run: |
+          set -euo pipefail
+          packages=("platform-tools" "platforms;android-35" "build-tools;35.0.0" "ndk;27.1.12297006" "cmake;3.22.1")
+          for attempt in 1 2 3; do
+            if sdkmanager "${packages[@]}"; then
+              exit 0
+            fi
+
+            echo "Android package install failed on attempt ${attempt}; clearing partial SDK downloads before retry."
+            rm -rf "$ANDROID_HOME/.temp" "$ANDROID_HOME/temp" "$ANDROID_HOME/ndk/27.1.12297006"
+            sleep $((attempt * 10))
+          done
+
+          sdkmanager "${packages[@]}"
+
+      - name: Decode keystore
+        id: decode_keystore
+        run: |
+          KEYSTORE_PATH="$GITHUB_WORKSPACE/android/app/keystore.jks"
+          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > "$KEYSTORE_PATH"
+          test -s "$KEYSTORE_PATH"
+          echo "keystore_path=$KEYSTORE_PATH" >> $GITHUB_OUTPUT
+
+      - name: Install dependencies
+        run: npm install --legacy-peer-deps --include=dev
+
+      - name: Validate Expo config
+        run: npx expo config --type public
+
+      - name: Build release APK
+        working-directory: android
+        run: |
+          chmod +x ./gradlew
+          ./gradlew "app:assembleRelease" \
+            -x lint \
+            -x test \
+            --stacktrace \
+            --console=plain \
+            -PreactNativeDevServerPort=8081 \
+            -PreactNativeArchitectures="${ARCHITECTURES}" \
+            -Pandroid.injected.signing.store.file="${{ steps.decode_keystore.outputs.keystore_path }}" \
+            -Pandroid.injected.signing.store.password="${{ secrets.KEYSTORE_PASSWORD }}" \
+            -Pandroid.injected.signing.key.alias="${{ secrets.KEYSTORE_ALIAS }}" \
+            -Pandroid.injected.signing.key.password="${{ secrets.KEYSTORE_KEY_PASSWORD }}"
+        env:
+          ARCHITECTURES: ${{ github.event.inputs.architectures || 'armeabi-v7a,arm64-v8a,x86,x86_64' }}
+
+      - name: Build release Bundle (AAB)
+        working-directory: android
+        run: |
+          ./gradlew "app:bundleRelease" \
+            -x lint \
+            -x test \
+            --stacktrace \
+            --console=plain \
+            -PreactNativeDevServerPort=8081 \
+            -Pandroid.injected.signing.store.file="${{ steps.decode_keystore.outputs.keystore_path }}" \
+            -Pandroid.injected.signing.store.password="${{ secrets.KEYSTORE_PASSWORD }}" \
+            -Pandroid.injected.signing.key.alias="${{ secrets.KEYSTORE_ALIAS }}" \
+            -Pandroid.injected.signing.key.password="${{ secrets.KEYSTORE_KEY_PASSWORD }}"
+
+      - name: Generate build metadata
+        id: build_info
+        run: |
+          BUILD_TIME=$(date -u +'%Y-%m-%dT%H:%M:%SZ')
+          GIT_SHA=${{ github.sha }}
+          GIT_REF=${{ github.ref }}
+          echo "build_time=${BUILD_TIME}" >> $GITHUB_OUTPUT
+          echo "git_sha=${GIT_SHA:0:7}" >> $GITHUB_OUTPUT
+          echo "git_ref=${GIT_REF##*/}" >> $GITHUB_OUTPUT
+
+      - name: Upload release APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: quantum-app-release-apk-${{ steps.build_info.outputs.git_ref }}-${{ steps.build_info.outputs.git_sha }}
+          path: android/app/build/outputs/apk/release/*.apk
+          retention-days: 30
+          if-no-files-found: error
+
+      - name: Upload release AAB (App Bundle)
+        uses: actions/upload-artifact@v4
+        with:
+          name: quantum-app-release-aab-${{ steps.build_info.outputs.git_ref }}-${{ steps.build_info.outputs.git_sha }}
+          path: android/app/build/outputs/bundle/release/*.aab
+          retention-days: 30
+          if-no-files-found: error
+
+      - name: Generate checksums
+        run: |
+          cd android/app/build/outputs
+          find . -type f \( -name "*.apk" -o -name "*.aab" \) -exec sha256sum {} \; > checksums.txt
+          cat checksums.txt
+
+      - name: Upload checksums
+        uses: actions/upload-artifact@v4
+        with:
+          name: quantum-app-checksums-${{ steps.build_info.outputs.git_ref }}-${{ steps.build_info.outputs.git_sha }}
+          path: android/app/build/outputs/checksums.txt
+          retention-days: 30
+
+      - name: Create release notes
+        run: |
+          cat > release-notes.md << 'EOF'
+          # Quantum App Release Build
+          
+          **Build Information:**
+          - Build Time: ${{ steps.build_info.outputs.build_time }}
+          - Git Reference: ${{ steps.build_info.outputs.git_ref }}
+          - Git SHA: ${{ steps.build_info.outputs.git_sha }}
+          - Architectures: ${{ github.event.inputs.architectures || 'armeabi-v7a,arm64-v8a,x86,x86_64' }}
+          
+          **Artifacts:**
+          - main APK (all architectures)
+          - App Bundle (AAB) for Google Play Store
+          - SHA256 checksums
+          
+          **Version:** ${{ github.ref_name }}
+          **Build by:** GitHub Actions
+          EOF
+          cat release-notes.md
+
+      - name: Upload release notes
+        uses: actions/upload-artifact@v4
+        with:
+          name: quantum-app-release-notes-${{ steps.build_info.outputs.git_ref }}-${{ steps.build_info.outputs.git_sha }}
+          path: release-notes.md
+          retention-days: 30
+
+      - name: Build summary
+        run: |
+          echo "✅ Release build completed successfully"
+          echo "📦 Artifacts generated:"
+          ls -lh android/app/build/outputs/apk/release/ 2>/dev/null || echo "No APKs found"
+          ls -lh android/app/build/outputs/bundle/release/ 2>/dev/null || echo "No AABs found"
