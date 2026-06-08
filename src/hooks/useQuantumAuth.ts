@@ -1,5 +1,12 @@
 import * as WebBrowser from "expo-web-browser";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type MutableRefObject,
+} from "react";
 import { AppState } from "react-native";
 
 import { CHEFU_ACCOUNT_MANAGE_HREF } from "@/constants/quantum";
@@ -10,6 +17,7 @@ import {
   saveStoredAuthSession,
   type StoredAuthSession,
 } from "@/lib/authStorage";
+import { authErrorMessage } from "@/lib/authErrors";
 import {
   refreshQuantumSession,
   revokeQuantumSession,
@@ -21,8 +29,10 @@ export function useQuantumAuth() {
   const [session, setSession] = useState<StoredAuthSession | null>(null);
   const [authStatus, setAuthStatus] = useState<AuthStatus>("checking");
   const [authNotice, setAuthNotice] = useState("");
+  const operationRef = useRef(0);
 
   const restoreStoredSession = useCallback(async () => {
+    const operationId = nextAuthOperation(operationRef);
     setAuthStatus("checking");
 
     try {
@@ -30,6 +40,7 @@ export function useQuantumAuth() {
 
       if (!isStoredAuthSessionFresh(storedSession)) {
         const refreshedSession = await refreshStoredSession(storedSession);
+        if (!isCurrentAuthOperation(operationRef, operationId)) return;
 
         if (refreshedSession) {
           setSession(refreshedSession);
@@ -39,13 +50,18 @@ export function useQuantumAuth() {
 
         setSession(null);
         setAuthStatus("guest");
-        if (storedSession) void clearStoredAuthSession();
+        if (storedSession) {
+          setAuthNotice("Your CheFu session expired. Sign in again to sync.");
+          void clearStoredAuthSession();
+        }
         return;
       }
 
+      if (!isCurrentAuthOperation(operationRef, operationId)) return;
       setSession(storedSession);
       setAuthStatus("authenticated");
     } catch {
+      if (!isCurrentAuthOperation(operationRef, operationId)) return;
       setSession(null);
       setAuthStatus("guest");
     }
@@ -62,6 +78,7 @@ export function useQuantumAuth() {
         return;
       }
 
+      nextAuthOperation(operationRef);
       setSession(null);
       setAuthStatus("checking");
       setAuthNotice("");
@@ -78,9 +95,10 @@ export function useQuantumAuth() {
       (session.expiresAt - Math.floor(Date.now() / 1000) - 30) * 1000,
     );
     let active = true;
+    const operationId = operationRef.current;
     const timeout = setTimeout(async () => {
       const refreshedSession = await refreshStoredSession(session);
-      if (!active) return;
+      if (!active || !isCurrentAuthOperation(operationRef, operationId)) return;
 
       if (refreshedSession) {
         setSession(refreshedSession);
@@ -101,11 +119,13 @@ export function useQuantumAuth() {
   }, [session]);
 
   const signIn = useCallback(async () => {
+    const operationId = nextAuthOperation(operationRef);
     setAuthNotice("");
     setAuthStatus("checking");
 
     try {
       const nextSession = await startQuantumSignIn();
+      if (!isCurrentAuthOperation(operationRef, operationId)) return;
 
       if (!nextSession) {
         setAuthStatus(session ? "authenticated" : "guest");
@@ -117,16 +137,14 @@ export function useQuantumAuth() {
       setAuthStatus("authenticated");
       setAuthNotice("Signed in to CheFu Account.");
     } catch (error) {
+      if (!isCurrentAuthOperation(operationRef, operationId)) return;
       setAuthStatus(session ? "authenticated" : "guest");
-      setAuthNotice(
-        error instanceof Error
-          ? error.message
-          : "Could not sign in to CheFu Account.",
-      );
+      setAuthNotice(authErrorMessage(error));
     }
   }, [session]);
 
   const signOut = useCallback(async () => {
+    nextAuthOperation(operationRef);
     await revokeQuantumSession(session).catch(() => undefined);
     await clearStoredAuthSession();
     setSession(null);
@@ -158,6 +176,18 @@ export function useQuantumAuth() {
       signOut,
     ],
   );
+}
+
+function nextAuthOperation(operationRef: MutableRefObject<number>) {
+  operationRef.current += 1;
+  return operationRef.current;
+}
+
+function isCurrentAuthOperation(
+  operationRef: MutableRefObject<number>,
+  operationId: number,
+) {
+  return operationRef.current === operationId;
 }
 
 async function refreshStoredSession(session: StoredAuthSession | null) {

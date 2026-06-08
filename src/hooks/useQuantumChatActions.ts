@@ -10,6 +10,7 @@ import {
 import { pickQuantumAttachments } from "@/lib/attachments";
 import { deleteAccountConversation } from "@/lib/conversations";
 import { requestQuantumReply } from "@/lib/quantumClient";
+import { getCurrentNetworkStatus } from "@/hooks/useNetworkStatus";
 import {
   applyMessageFeedback,
   assistantContentFromResponse,
@@ -46,6 +47,7 @@ export function useQuantumChatActions({
   activeThreadId,
   attachments,
   input,
+  isOnline,
   isTyping,
   preferences,
   selectedModel,
@@ -76,6 +78,7 @@ export function useQuantumChatActions({
   activeThreadId: string;
   attachments: ImageAttachment[];
   input: string;
+  isOnline: boolean;
   isTyping: boolean;
   preferences: ChatPreferences;
   selectedModel: QuantumModel;
@@ -117,6 +120,13 @@ export function useQuantumChatActions({
 
   async function sendMessage(messageOverride?: string) {
     if (isTyping) return;
+    if (
+      !(await canUseNetwork(
+        "No internet connection. Your message is still in the composer.",
+      ))
+    ) {
+      return;
+    }
 
     const messageText = (messageOverride ?? input).trim();
     const activeAttachments = attachments;
@@ -192,6 +202,7 @@ export function useQuantumChatActions({
 
   async function regenerateResponse(messageId: string) {
     if (isTyping) return;
+    if (!(await canUseNetwork("Reconnect before regenerating this response."))) return;
 
     const thread = threads.find((item) =>
       item.messages.some((message) => message.id === messageId),
@@ -322,6 +333,13 @@ export function useQuantumChatActions({
   }
 
   function deleteThread(threadId: string) {
+    if (
+      authStatus === "authenticated" &&
+      !canUseNetworkSnapshot("Reconnect before deleting synced conversations.")
+    ) {
+      return;
+    }
+
     const nextThreads = threads.filter((thread) => thread.id !== threadId);
     setThreads(nextThreads);
     if (accessToken) {
@@ -352,6 +370,13 @@ export function useQuantumChatActions({
   }
 
   function clearConversations() {
+    if (
+      authStatus === "authenticated" &&
+      !canUseNetworkSnapshot("Reconnect before clearing synced conversations.")
+    ) {
+      return;
+    }
+
     Alert.alert("Clear conversations", "All Quantum history will be removed.", [
       { style: "cancel", text: "Cancel" },
       {
@@ -374,6 +399,8 @@ export function useQuantumChatActions({
   }
 
   async function openLogin() {
+    if (!(await canUseNetwork("Reconnect to sign in with CheFu Account."))) return;
+
     await onSignIn();
   }
 
@@ -391,6 +418,22 @@ export function useQuantumChatActions({
     setSettingsOpen(false);
     setSidebarOpen(false);
     await onSignOut();
+  }
+
+  function canUseNetworkSnapshot(message: string) {
+    if (isOnline) return true;
+    setNotice(message);
+    return false;
+  }
+
+  async function canUseNetwork(message: string) {
+    if (!canUseNetworkSnapshot(message)) return false;
+
+    const currentStatus = await getCurrentNetworkStatus().catch(() => null);
+    if (currentStatus?.isOnline !== false) return true;
+
+    setNotice(message);
+    return false;
   }
 
   return {

@@ -25,6 +25,7 @@
     "plugins": [
       "expo-router",
       "./plugins/with-android-network-security-config",
+      "./plugins/with-android-release-hardening",
       [
         "expo-splash-screen",
         {
@@ -41,6 +42,12 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "8679353b-9cf3-4f4f-b8bd-31699c634632"
+      }
     }
   }
 }
