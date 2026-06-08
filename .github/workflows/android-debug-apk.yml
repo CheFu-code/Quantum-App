@@ -1,0 +1,154 @@
+name: Android Debug APK
+
+on:
+  workflow_dispatch:
+    inputs:
+      architectures:
+        description: Android ABIs to include in the debug APK
+        required: false
+        default: armeabi-v7a,arm64-v8a,x86,x86_64
+      run_validation:
+        description: Run lint, typecheck, and tests before building
+        required: false
+        type: boolean
+        default: true
+  pull_request:
+    branches:
+      - main
+
+concurrency:
+  group: android-debug-apk-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  EXPO_NO_TELEMETRY: "1"
+  NODE_ENV: development
+  NODE_VERSION: 22.13.x
+  GRADLE_OPTS: "-Dorg.gradle.daemon=false -Dorg.gradle.jvmargs=-Xmx4g"
+
+jobs:
+  build-debug-apk:
+    name: Build Android Debug APK
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          cache: npm
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android packages
+        run: |
+          set -euo pipefail
+          packages=("platform-tools" "platforms;android-36" "build-tools;36.0.0" "ndk;27.1.12297006" "cmake;3.22.1")
+
+          for attempt in 1 2 3; do
+            if sdkmanager "${packages[@]}"; then
+              exit 0
+            fi
+
+            echo "Android package install failed on attempt ${attempt}; clearing partial SDK downloads before retry."
+            rm -rf "$ANDROID_HOME/.temp" "$ANDROID_HOME/temp" "$ANDROID_HOME/ndk/27.1.12297006"
+            sleep $((attempt * 10))
+          done
+
+          sdkmanager "${packages[@]}"
+
+      - name: Install dependencies
+        run: npm ci --include=dev --legacy-peer-deps
+
+      - name: Validate app
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.run_validation }}
+        run: |
+          set -euo pipefail
+          npm run lint
+          npm run typecheck
+          npm run test -- --silent
+
+      - name: Generate Android native project
+        run: npx expo prebuild --platform android --no-install
+
+      - name: Validate Expo config
+        run: npx expo config --type public
+
+      - name: Build debug APK
+        working-directory: android
+        env:
+          ARCHITECTURES: ${{ github.event.inputs.architectures || 'armeabi-v7a,arm64-v8a,x86,x86_64' }}
+        run: |
+          set -euo pipefail
+          chmod +x ./gradlew
+          ./gradlew app:assembleDebug \
+            -x lint \
+            -x test \
+            --stacktrace \
+            --console=plain \
+            -PreactNativeDevServerPort=8081 \
+            -PreactNativeArchitectures="$ARCHITECTURES"
+
+      - name: Prepare debug artifacts
+        id: debug_artifacts
+        run: |
+          set -euo pipefail
+          mkdir -p build-artifacts/android-debug
+          mapfile -t apks < <(find android/app/build/outputs/apk/debug -type f -name "*.apk")
+
+          if [ "${#apks[@]}" -eq 0 ]; then
+            echo "No debug APKs were produced."
+            exit 1
+          fi
+
+          for apk in "${apks[@]}"; do
+            cp "$apk" build-artifacts/android-debug/
+          done
+
+          (
+            cd build-artifacts/android-debug
+            sha256sum *.apk > SHA256SUMS
+            ls -lh
+          )
+
+          ref_name="${GITHUB_REF_NAME//\//-}"
+          short_sha="${GITHUB_SHA::7}"
+          echo "ref_name=$ref_name" >> "$GITHUB_OUTPUT"
+          echo "short_sha=$short_sha" >> "$GITHUB_OUTPUT"
+
+      - name: Upload debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          if-no-files-found: error
+          name: quantum-android-debug-apk-${{ steps.debug_artifacts.outputs.ref_name }}-${{ steps.debug_artifacts.outputs.short_sha }}
+          path: build-artifacts/android-debug/*
+          retention-days: 14
+
+      - name: Build summary
+        run: |
+          {
+            echo "### Android Debug APK"
+            echo "- Ref: ${{ steps.debug_artifacts.outputs.ref_name }}"
+            echo "- SHA: ${{ steps.debug_artifacts.outputs.short_sha }}"
+            echo "- Artifact: quantum-android-debug-apk-${{ steps.debug_artifacts.outputs.ref_name }}-${{ steps.debug_artifacts.outputs.short_sha }}"
+            echo "- Start Metro with \`npx expo start\` when using this debug build."
+          } >> "$GITHUB_STEP_SUMMARY"
