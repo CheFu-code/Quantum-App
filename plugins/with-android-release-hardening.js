@@ -40,14 +40,17 @@ async function patchAppBuildGradle(filePath) {
   let contents = await readText(filePath);
 
   if (!contents.includes('hermesFlags = ["-O"]')) {
-    contents = contents.replace(
+    contents = replaceOrThrow(
+      contents,
       /(\s*\/\/ hermesFlags = \["-O", "-output-source-map"\]\r?\n)/,
       '$1    hermesFlags = ["-O"]\n    extraPackagerArgs = ["--minify", "true"]\n',
+      "Hermes flags optimization patch",
     );
   }
 
   if (!contents.includes("def releaseStoreFilePath =")) {
-    contents = contents.replace(
+    contents = replaceOrThrow(
+      contents,
       /(def jscFlavor = '.*?'\r?\n)/,
       `$1def releaseStoreFilePath = findProperty('QUANTUM_UPLOAD_STORE_FILE') ?: System.getenv('QUANTUM_UPLOAD_STORE_FILE')
 def releaseStorePassword = findProperty('QUANTUM_UPLOAD_STORE_PASSWORD') ?: System.getenv('QUANTUM_UPLOAD_STORE_PASSWORD')
@@ -57,11 +60,13 @@ def hasReleaseSigning = releaseStoreFilePath && releaseStorePassword && releaseK
 def hasInjectedSigning = findProperty('android.injected.signing.store.file') != null
 def requestedReleaseBuild = gradle.startParameter.taskNames.any { it.toLowerCase().contains("release") }
 `,
+      "Release signing configuration variables patch",
     );
   }
 
   if (!contents.includes("signingConfigs.release")) {
-    contents = contents.replace(
+    contents = replaceOrThrow(
+      contents,
       /(signingConfigs\s*\{\s*debug\s*\{[\s\S]*?\n\s*\}\r?\n)(\s*\})/,
       `$1        release {
             if (hasReleaseSigning) {
@@ -72,17 +77,19 @@ def requestedReleaseBuild = gradle.startParameter.taskNames.any { it.toLowerCase
             }
         }
 $2`,
+      "Signing configs release block patch",
     );
   }
 
-  contents = contents.replace(
-    /release\s*\{\s*\/\/ Caution![\s\S]*?signingConfig signingConfigs\.debug/,
-    `release {
-            if (hasReleaseSigning) {
+  contents = replaceOrThrow(
+    contents,
+    /(release\s*\{[\s\S]*?)(\/\/ Caution![\s\S]*?signingConfig signingConfigs\.debug)/,
+    `$1if (hasReleaseSigning) {
                 signingConfig signingConfigs.release
             } else if (requestedReleaseBuild && !hasInjectedSigning) {
                 throw new GradleException("Release signing credentials are required. Set QUANTUM_UPLOAD_* properties or use android.injected.signing.* in CI.")
             }`,
+    "Release build type signingConfig patch",
   );
 
   await fs.promises.writeFile(filePath, contents);
@@ -117,4 +124,12 @@ function escapeRegExp(value) {
 
 async function readText(filePath) {
   return fs.promises.readFile(filePath, "utf8");
+}
+
+function replaceOrThrow(contents, pattern, replacement, label) {
+  const result = contents.replace(pattern, replacement);
+  if (result === contents) {
+    throw new Error(`Failed to apply patch: ${label}`);
+  }
+  return result;
 }

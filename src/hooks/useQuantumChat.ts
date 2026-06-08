@@ -77,6 +77,10 @@ export function useQuantumChat() {
       try {
         if (!networkStatus.isOnline) {
           if (!mounted) return;
+          if (auth.authStatus !== "authenticated" || !auth.accessToken) {
+            setThreads([]);
+            setActiveThreadId("");
+          }
           setNotice("No internet connection. Reconnect to sync conversations.");
           return;
         }

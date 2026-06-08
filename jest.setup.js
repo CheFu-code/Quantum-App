@@ -1,3 +1,4 @@
+/* eslint-env jest */
 jest.mock("react-native-reanimated", () =>
   require("react-native-reanimated/mock"),
 );
@@ -18,4 +19,7 @@ jest.mock("expo-network", () => ({
     isInternetReachable: true,
     type: "WIFI",
   })),
+  getNetworkStateAsync: jest.fn(() =>
+    Promise.resolve({ isConnected: true, isInternetReachable: true, type: "WIFI" })
+  ),
 }));
