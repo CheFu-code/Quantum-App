@@ -115,12 +115,9 @@ export default function Index() {
           keyboardShouldPersistTaps="handled"
           ListEmptyComponent={
             chat.hydrated ? (
-              <EmptyState
-                isLoading={false}
-                onSuggestion={(suggestion) => actions.setInput(suggestion)}
-              />
+              <EmptyState isLoading={false} />
             ) : (
-              <EmptyState isLoading onSuggestion={() => undefined} />
+              <EmptyState isLoading />
             )
           }
           maxToRenderPerBatch={6}
