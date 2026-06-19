@@ -1,0 +1,39 @@
+name: Welcome Bot
+
+on:
+  issues:
+    types: [opened]
+  pull_request_target:
+    types: [opened]
+
+jobs:
+  welcome:
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      pull-requests: write
+
+    steps:
+      - name: Welcome New Issues
+        if: github.event.issue && github.event.action == 'opened'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `👋 Hey @${context.actor}, thanks for opening an issue! \n\nOur team will take a look at this as soon as possible. In the meantime, please make sure you've provided all necessary logs or environment details.\n\n🛠️ *This project is independently maintained. Consider supporting our development on [Patreon](https://www.patreon.com/CheFu979)!*`
+            })
+
+      - name: Welcome New Pull Requests
+        if: github.event.pull_request && github.event.action == 'opened'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `🚀 Thank you @${context.actor} for the Pull Request! \n\nOur automated CI tests are spinning up now to check the changes. A maintainer will review your code shortly.\n\n💖 *Love what we're building? Support the ecosystem on [GitHub Sponsors](https://github.com/sponsors/CheFu-code)!*`
+            })
