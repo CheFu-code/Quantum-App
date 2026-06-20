@@ -1,5 +1,5 @@
 import { fireEvent, render, waitFor } from "@testing-library/react-native";
-import { Pressable, Text, View } from "react-native";
+import { AppState, Pressable, Text, View } from "react-native";
 
 import {
   clearStoredAuthSession,
@@ -93,6 +93,52 @@ describe("useQuantumAuth", () => {
         "CheFu Account is taking longer than expected",
       ),
     );
+  });
+
+  it("keeps the OAuth operation alive while the auth browser backgrounds the app", async () => {
+    const signedInSession: StoredAuthSession = {
+      accessToken: "access-token",
+      expiresAt: Math.floor(Date.now() / 1000) + 3600,
+      idToken: "id-token",
+      issuedAt: Math.floor(Date.now() / 1000),
+      refreshToken: "refresh-token",
+      user: {
+        email: "user@chefuinc.com",
+        uid: "user-1",
+      },
+    };
+    let appStateListener: ((state: string) => void) | undefined;
+    jest
+      .spyOn(AppState, "addEventListener")
+      .mockImplementation((_event, listener) => {
+        appStateListener = listener as (state: string) => void;
+        return { remove: jest.fn() } as never;
+      });
+    let finishSignIn: ((session: StoredAuthSession) => void) | undefined;
+    jest.mocked(startQuantumSignIn).mockImplementation(
+      () =>
+        new Promise(resolve => {
+          finishSignIn = resolve;
+        }),
+    );
+
+    const view = await render(<AuthHarness />);
+
+    await waitFor(() =>
+      expect(view.getByTestId("status").props.children).toBe("guest"),
+    );
+    fireEvent.press(view.getByText("Sign in"));
+    appStateListener?.("background");
+    finishSignIn?.(signedInSession);
+
+    await waitFor(() =>
+      expect(view.getByTestId("status").props.children).toBe("authenticated"),
+    );
+    expect(saveStoredAuthSession).toHaveBeenCalledWith(signedInSession);
+    expect(view.getByTestId("notice").props.children).toBe(
+      "Signed in to CheFu Account.",
+    );
+    view.unmount();
   });
 
   it("clears expired sessions and prompts the user to sign in again", async () => {
