@@ -30,6 +30,7 @@ export function useQuantumAuth() {
   const [authStatus, setAuthStatus] = useState<AuthStatus>("checking");
   const [authNotice, setAuthNotice] = useState("");
   const operationRef = useRef(0);
+  const authPromptActiveRef = useRef(false);
 
   const restoreStoredSession = useCallback(async () => {
     const operationId = nextAuthOperation(operationRef);
@@ -73,6 +74,8 @@ export function useQuantumAuth() {
 
   useEffect(() => {
     const subscription = AppState.addEventListener("change", (nextState) => {
+      if (authPromptActiveRef.current) return;
+
       if (nextState === "active") {
         void restoreStoredSession();
         return;
@@ -124,7 +127,9 @@ export function useQuantumAuth() {
     setAuthStatus("checking");
 
     try {
+      authPromptActiveRef.current = true;
       const nextSession = await startQuantumSignIn();
+      authPromptActiveRef.current = false;
       if (!isCurrentAuthOperation(operationRef, operationId)) return;
 
       if (!nextSession) {
@@ -137,6 +142,7 @@ export function useQuantumAuth() {
       setAuthStatus("authenticated");
       setAuthNotice("Signed in to CheFu Account.");
     } catch (error) {
+      authPromptActiveRef.current = false;
       if (!isCurrentAuthOperation(operationRef, operationId)) return;
       setAuthStatus(session ? "authenticated" : "guest");
       setAuthNotice(authErrorMessage(error));
