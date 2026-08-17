@@ -21,7 +21,7 @@ export function authErrorMessage(error: unknown) {
     normalized.includes("invalid token") ||
     normalized.includes("invalid id token")
   ) {
-    return "Your CheFu session expired. Sign in again to sync.";
+    return "Your CHEFU session expired. Sign in again to sync.";
   }
 
   return message || "Could not sign in to CHEFU Account.";

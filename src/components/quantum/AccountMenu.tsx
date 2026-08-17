@@ -99,7 +99,7 @@ function MenuAction({
 }
 
 function getInitials(user: SessionUser) {
-  const source = user.displayName || user.email || "CheFu";
+  const source = user.displayName || user.email || "CHEFU";
   const parts = source
     .replace(/@.*/, "")
     .split(/\s+|[._-]/)

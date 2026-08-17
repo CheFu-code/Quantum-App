@@ -161,7 +161,7 @@ describe("useQuantumAuth", () => {
 
     await waitFor(() =>
       expect(String(view.getByTestId("notice").props.children)).toContain(
-        "Your CheFu session expired",
+        "Your CHEFU session expired",
       ),
     );
     expect(clearStoredAuthSession).toHaveBeenCalled();

@@ -35,5 +35,5 @@ jobs:
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: `🚀 Thank you @${context.actor} for the Pull Request! \n\nOur automated CI tests are spinning up now to check the changes. A maintainer will review your code shortly.\n\n💖 *Love what we're building? Support the ecosystem on [GitHub Sponsors](https://github.com/sponsors/CheFu-code)!*`
+              body: `🚀 Thank you @${context.actor} for the Pull Request! \n\nOur automated CI tests are spinning up now to check the changes. A maintainer will review your code shortly.\n\n💖 *Love what we're building? Support the ecosystem on [GitHub Sponsors](https://github.com/sponsors/CHEFU-code)!*`
             })

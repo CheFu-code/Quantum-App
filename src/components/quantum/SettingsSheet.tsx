@@ -86,10 +86,10 @@ export function SettingsSheet({
               </Text>
               <Text style={styles.accountDescription}>
                 {authStatus === "checking"
-                  ? "Checking your CheFu account session."
+                  ? "Checking your CHEFU account session."
                   : signedInUser
                     ? signedInUser.email
-                    : "Sign in to sync Quantum conversations with your CheFu account."}
+                    : "Sign in to sync Quantum conversations with your CHEFU account."}
               </Text>
               {signedInUser ? (
                 <>

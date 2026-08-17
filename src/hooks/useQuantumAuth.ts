@@ -52,7 +52,7 @@ export function useQuantumAuth() {
         setSession(null);
         setAuthStatus("guest");
         if (storedSession) {
-          setAuthNotice("Your CheFu session expired. Sign in again to sync.");
+          setAuthNotice("Your CHEFU session expired. Sign in again to sync.");
           void clearStoredAuthSession();
         }
         return;
@@ -111,7 +111,7 @@ export function useQuantumAuth() {
 
       setSession(null);
       setAuthStatus("guest");
-      setAuthNotice("Your CheFu session expired. Sign in again to sync.");
+      setAuthNotice("Your CHEFU session expired. Sign in again to sync.");
       void clearStoredAuthSession();
     }, delay);
 
