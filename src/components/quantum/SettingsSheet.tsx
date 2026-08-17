@@ -81,8 +81,8 @@ export function SettingsSheet({
             <View style={styles.accountBox}>
               <Text style={styles.accountTitle}>
                 {signedInUser
-                  ? signedInUser.displayName || "CheFu Account"
-                  : "CheFu Account"}
+                  ? signedInUser.displayName || "CHEFU Account"
+                  : "CHEFU Account"}
               </Text>
               <Text style={styles.accountDescription}>
                 {authStatus === "checking"

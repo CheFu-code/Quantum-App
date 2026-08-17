@@ -140,7 +140,7 @@ export function useQuantumAuth() {
       await saveStoredAuthSession(nextSession);
       setSession(nextSession);
       setAuthStatus("authenticated");
-      setAuthNotice("Signed in to CheFu Account.");
+      setAuthNotice("Signed in to CHEFU Account.");
     } catch (error) {
       authPromptActiveRef.current = false;
       if (!isCurrentAuthOperation(operationRef, operationId)) return;

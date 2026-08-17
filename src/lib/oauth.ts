@@ -81,7 +81,7 @@ export async function startQuantumSignIn() {
     AUTH_DISCOVERY,
   );
   if (!tokenResponse.accessToken || !tokenResponse.expiresIn) {
-    throw new Error("CheFu Account did not return a valid access token.");
+    throw new Error("CHEFU Account did not return a valid access token.");
   }
 
   validateIdTokenClaims(tokenResponse.idToken, nonce);
@@ -89,7 +89,7 @@ export async function startQuantumSignIn() {
   const user = normalizeSessionUser(userInfo);
 
   if (!user) {
-    throw new Error("CheFu Account did not return a Quantum user.");
+    throw new Error("CHEFU Account did not return a Quantum user.");
   }
 
   return {
@@ -119,14 +119,14 @@ export async function refreshQuantumSession(session: StoredAuthSession) {
   );
 
   if (!tokenResponse.accessToken || !tokenResponse.expiresIn) {
-    throw new Error("CheFu Account did not refresh the access token.");
+    throw new Error("CHEFU Account did not refresh the access token.");
   }
 
   const userInfo = await fetchQuantumUserInfo(tokenResponse.accessToken);
   const user = normalizeSessionUser(userInfo);
 
   if (!user) {
-    throw new Error("CheFu Account did not return a Quantum user.");
+    throw new Error("CHEFU Account did not return a Quantum user.");
   }
 
   return {
@@ -201,7 +201,7 @@ function normalizeSessionUser(userInfo: OAuthUserInfo): SessionUser | null {
 
 function validateIdTokenClaims(idToken: string | null | undefined, nonce: string) {
   if (!idToken) {
-    throw new Error("CheFu Account did not return an ID token.");
+    throw new Error("CHEFU Account did not return an ID token.");
   }
 
   const claims = parseJwtPayload(idToken);
@@ -220,7 +220,7 @@ function validateIdTokenClaims(idToken: string | null | undefined, nonce: string
     claims.exp <= now ||
     claims.iat > now + 60
   ) {
-    throw new Error("CheFu Account returned an invalid ID token.");
+    throw new Error("CHEFU Account returned an invalid ID token.");
   }
 }
 
@@ -228,13 +228,13 @@ function parseJwtPayload(token: string) {
   const [, payload] = token.split(".");
 
   if (!payload) {
-    throw new Error("CheFu Account returned a malformed ID token.");
+    throw new Error("CHEFU Account returned a malformed ID token.");
   }
 
   try {
     return JSON.parse(decodeBase64Url(payload)) as Record<string, unknown>;
   } catch {
-    throw new Error("CheFu Account returned a malformed ID token.");
+    throw new Error("CHEFU Account returned a malformed ID token.");
   }
 }
 
@@ -270,7 +270,7 @@ function decodeBase64(value: string) {
   for (const character of value.replace(/=+$/, "")) {
     const index = alphabet.indexOf(character);
     if (index === -1) {
-      throw new Error("CheFu Account returned a malformed ID token.");
+      throw new Error("CHEFU Account returned a malformed ID token.");
     }
 
     buffer = (buffer << 6) | index;

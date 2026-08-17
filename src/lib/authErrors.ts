@@ -3,7 +3,7 @@ export function authErrorMessage(error: unknown) {
   const normalized = message.toLowerCase();
 
   if (normalized.includes("timeout") || normalized.includes("timed out")) {
-    return "CheFu Account is taking longer than expected. Check your connection and try again.";
+    return "CHEFU Account is taking longer than expected. Check your connection and try again.";
   }
 
   if (
@@ -13,7 +13,7 @@ export function authErrorMessage(error: unknown) {
     normalized.includes("temporarily unavailable") ||
     normalized.includes("503")
   ) {
-    return "CheFu Account is temporarily unavailable. Try again in a moment.";
+    return "CHEFU Account is temporarily unavailable. Try again in a moment.";
   }
 
   if (
@@ -24,5 +24,5 @@ export function authErrorMessage(error: unknown) {
     return "Your CheFu session expired. Sign in again to sync.";
   }
 
-  return message || "Could not sign in to CheFu Account.";
+  return message || "Could not sign in to CHEFU Account.";
 }

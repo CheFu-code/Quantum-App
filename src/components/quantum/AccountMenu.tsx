@@ -21,7 +21,7 @@ export function AccountMenu({
 }) {
   if (!user) return null;
 
-  const displayName = user.displayName || "CheFu Account";
+  const displayName = user.displayName || "CHEFU Account";
 
   function closeThen(action: () => void) {
     onClose();

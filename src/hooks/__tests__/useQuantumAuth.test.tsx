@@ -70,7 +70,7 @@ describe("useQuantumAuth", () => {
 
     await waitFor(() =>
       expect(String(view.getByTestId("notice").props.children)).toContain(
-        "CheFu Account is temporarily unavailable",
+        "CHEFU Account is temporarily unavailable",
       ),
     );
     expect(view.getByTestId("status").props.children).toBe("guest");
@@ -90,7 +90,7 @@ describe("useQuantumAuth", () => {
 
     await waitFor(() =>
       expect(String(view.getByTestId("notice").props.children)).toContain(
-        "CheFu Account is taking longer than expected",
+        "CHEFU Account is taking longer than expected",
       ),
     );
   });
@@ -136,7 +136,7 @@ describe("useQuantumAuth", () => {
     );
     expect(saveStoredAuthSession).toHaveBeenCalledWith(signedInSession);
     expect(view.getByTestId("notice").props.children).toBe(
-      "Signed in to CheFu Account.",
+      "Signed in to CHEFU Account.",
     );
     view.unmount();
   });
