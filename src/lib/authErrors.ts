@@ -1,28 +1,28 @@
 export function authErrorMessage(error: unknown) {
-  const message = error instanceof Error ? error.message : String(error || "");
-  const normalized = message.toLowerCase();
+    const message = error instanceof Error ? error.message : String(error || "");
+    const normalized = message.toLowerCase();
 
-  if (normalized.includes("timeout") || normalized.includes("timed out")) {
-    return "CHEFU Account is taking longer than expected. Check your connection and try again.";
-  }
+    if (normalized.includes("timeout") || normalized.includes("timed out")) {
+        return "Your account is taking longer than expected. Check your connection and try again.";
+    }
 
-  if (
-    normalized.includes("network") ||
-    normalized.includes("failed to fetch") ||
-    normalized.includes("service unavailable") ||
-    normalized.includes("temporarily unavailable") ||
-    normalized.includes("503")
-  ) {
-    return "CHEFU Account is temporarily unavailable. Try again in a moment.";
-  }
+    if (
+        normalized.includes("network") ||
+        normalized.includes("failed to fetch") ||
+        normalized.includes("service unavailable") ||
+        normalized.includes("temporarily unavailable") ||
+        normalized.includes("503")
+    ) {
+        return "Your account is temporarily unavailable. Try again in a moment.";
+    }
 
-  if (
-    normalized.includes("expired") ||
-    normalized.includes("invalid token") ||
-    normalized.includes("invalid id token")
-  ) {
-    return "Your CHEFU session expired. Sign in again to sync.";
-  }
+    if (
+        normalized.includes("expired") ||
+        normalized.includes("invalid token") ||
+        normalized.includes("invalid id token")
+    ) {
+        return "Your session expired. Sign in again to sync.";
+    }
 
-  return message || "Could not sign in to CHEFU Account.";
+    return message || "Could not sign in to your account.";
 }

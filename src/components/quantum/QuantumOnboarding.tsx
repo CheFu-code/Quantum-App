@@ -19,8 +19,8 @@ const slides = [
   },
   {
     icon: "account",
-    title: "Use your CHEFU Account",
-    body: "Sign in when you want your Quantum conversations synced through CHEFU.",
+    title: "Use your account",
+    body: "Sign in when you want your Quantum conversations to be synced.",
   },
 ] as const;
 

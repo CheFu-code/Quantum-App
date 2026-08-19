@@ -3,9 +3,9 @@ import * as Crypto from "expo-crypto";
 import * as WebBrowser from "expo-web-browser";
 
 import {
-  CHEFU_API_BASE,
-  QUANTUM_OAUTH_CLIENT_ID,
-  QUANTUM_OAUTH_SCOPES,
+    CHEFU_API_BASE,
+    QUANTUM_OAUTH_CLIENT_ID,
+    QUANTUM_OAUTH_SCOPES,
 } from "@/constants/quantum";
 import type { StoredAuthSession } from "@/lib/authStorage";
 import { assertSecureBackendUrl } from "@/lib/secureTransport";
@@ -14,273 +14,273 @@ import type { SessionUser } from "@/types/quantum";
 WebBrowser.maybeCompleteAuthSession();
 
 const AUTH_DISCOVERY = {
-  authorizationEndpoint: `${CHEFU_API_BASE}/oauth/authorize`,
-  revocationEndpoint: `${CHEFU_API_BASE}/oauth/revoke`,
-  tokenEndpoint: `${CHEFU_API_BASE}/oauth/token`,
-  userInfoEndpoint: `${CHEFU_API_BASE}/oauth/userinfo`,
+    authorizationEndpoint: `${CHEFU_API_BASE}/oauth/authorize`,
+    revocationEndpoint: `${CHEFU_API_BASE}/oauth/revoke`,
+    tokenEndpoint: `${CHEFU_API_BASE}/oauth/token`,
+    userInfoEndpoint: `${CHEFU_API_BASE}/oauth/userinfo`,
 };
 
 export const QUANTUM_AUTH_REDIRECT_URI = AuthSession.makeRedirectUri({
-  path: "auth",
-  scheme: "quantum",
+    path: "auth",
+    scheme: "quantum",
 });
 
 type OAuthUserInfo = {
-  email?: unknown;
-  name?: unknown;
-  picture?: unknown;
-  photoURL?: unknown;
-  roles?: unknown;
-  sub?: unknown;
+    email?: unknown;
+    name?: unknown;
+    picture?: unknown;
+    photoURL?: unknown;
+    roles?: unknown;
+    sub?: unknown;
 };
 
 export async function startQuantumSignIn() {
-  assertTrustedDiscovery();
-  const nonce = await randomOAuthParam(32);
-  const state = await randomOAuthParam(32);
-  const request = new AuthSession.AuthRequest({
-    clientId: QUANTUM_OAUTH_CLIENT_ID,
-    extraParams: {
-      nonce,
-    },
-    prompt: AuthSession.Prompt.Login,
-    redirectUri: QUANTUM_AUTH_REDIRECT_URI,
-    responseType: AuthSession.ResponseType.Code,
-    scopes: QUANTUM_OAUTH_SCOPES,
-    state,
-    usePKCE: true,
-  });
+    assertTrustedDiscovery();
+    const nonce = await randomOAuthParam(32);
+    const state = await randomOAuthParam(32);
+    const request = new AuthSession.AuthRequest({
+        clientId: QUANTUM_OAUTH_CLIENT_ID,
+        extraParams: {
+            nonce,
+        },
+        prompt: AuthSession.Prompt.Login,
+        redirectUri: QUANTUM_AUTH_REDIRECT_URI,
+        responseType: AuthSession.ResponseType.Code,
+        scopes: QUANTUM_OAUTH_SCOPES,
+        state,
+        usePKCE: true,
+    });
 
-  const result = await request.promptAsync(AUTH_DISCOVERY);
-  if (result.type === "cancel" || result.type === "dismiss") return null;
+    const result = await request.promptAsync(AUTH_DISCOVERY);
+    if (result.type === "cancel" || result.type === "dismiss") return null;
 
-  if (result.type !== "success") {
-    throw new Error("Sign in could not be completed.");
-  }
+    if (result.type !== "success") {
+        throw new Error("Sign in could not be completed.");
+    }
 
-  const code = result.params.code;
-  const codeVerifier = request.codeVerifier;
+    const code = result.params.code;
+    const codeVerifier = request.codeVerifier;
 
-  if (result.params.state !== state) {
-    throw new Error("Sign in response failed security validation.");
-  }
+    if (result.params.state !== state) {
+        throw new Error("Sign in response failed security validation.");
+    }
 
-  if (!code || !codeVerifier) {
-    throw new Error("Sign in response did not include the expected code.");
-  }
+    if (!code || !codeVerifier) {
+        throw new Error("Sign in response did not include the expected code.");
+    }
 
-  const tokenResponse = await AuthSession.exchangeCodeAsync(
-    {
-      clientId: QUANTUM_OAUTH_CLIENT_ID,
-      code,
-      extraParams: {
-        code_verifier: codeVerifier,
-      },
-      redirectUri: QUANTUM_AUTH_REDIRECT_URI,
-    },
-    AUTH_DISCOVERY,
-  );
-  if (!tokenResponse.accessToken || !tokenResponse.expiresIn) {
-    throw new Error("CHEFU Account did not return a valid access token.");
-  }
+    const tokenResponse = await AuthSession.exchangeCodeAsync(
+        {
+            clientId: QUANTUM_OAUTH_CLIENT_ID,
+            code,
+            extraParams: {
+                code_verifier: codeVerifier,
+            },
+            redirectUri: QUANTUM_AUTH_REDIRECT_URI,
+        },
+        AUTH_DISCOVERY,
+    );
+    if (!tokenResponse.accessToken || !tokenResponse.expiresIn) {
+        throw new Error("We did not return a valid access token.");
+    }
 
-  validateIdTokenClaims(tokenResponse.idToken, nonce);
-  const userInfo = await fetchQuantumUserInfo(tokenResponse.accessToken);
-  const user = normalizeSessionUser(userInfo);
+    validateIdTokenClaims(tokenResponse.idToken, nonce);
+    const userInfo = await fetchQuantumUserInfo(tokenResponse.accessToken);
+    const user = normalizeSessionUser(userInfo);
 
-  if (!user) {
-    throw new Error("CHEFU Account did not return a Quantum user.");
-  }
+    if (!user) {
+        throw new Error("We did not return a valid user.");
+    }
 
-  return {
-    accessToken: tokenResponse.accessToken,
-    expiresAt:
-      tokenResponse.issuedAt + (tokenResponse.expiresIn || 60 * 60),
-    idToken: tokenResponse.idToken,
-    issuedAt: tokenResponse.issuedAt,
-    refreshToken: tokenResponse.refreshToken,
-    scope: tokenResponse.scope,
-    tokenType: tokenResponse.tokenType,
-    user,
-  } satisfies StoredAuthSession;
+    return {
+        accessToken: tokenResponse.accessToken,
+        expiresAt:
+            tokenResponse.issuedAt + (tokenResponse.expiresIn || 60 * 60),
+        idToken: tokenResponse.idToken,
+        issuedAt: tokenResponse.issuedAt,
+        refreshToken: tokenResponse.refreshToken,
+        scope: tokenResponse.scope,
+        tokenType: tokenResponse.tokenType,
+        user,
+    } satisfies StoredAuthSession;
 }
 
 export async function refreshQuantumSession(session: StoredAuthSession) {
-  if (!session.refreshToken) return null;
-  assertTrustedDiscovery();
+    if (!session.refreshToken) return null;
+    assertTrustedDiscovery();
 
-  const tokenResponse = await AuthSession.refreshAsync(
-    {
-      clientId: QUANTUM_OAUTH_CLIENT_ID,
-      refreshToken: session.refreshToken,
-      scopes: QUANTUM_OAUTH_SCOPES,
-    },
-    AUTH_DISCOVERY,
-  );
+    const tokenResponse = await AuthSession.refreshAsync(
+        {
+            clientId: QUANTUM_OAUTH_CLIENT_ID,
+            refreshToken: session.refreshToken,
+            scopes: QUANTUM_OAUTH_SCOPES,
+        },
+        AUTH_DISCOVERY,
+    );
 
-  if (!tokenResponse.accessToken || !tokenResponse.expiresIn) {
-    throw new Error("CHEFU Account did not refresh the access token.");
-  }
+    if (!tokenResponse.accessToken || !tokenResponse.expiresIn) {
+        throw new Error("Your account did not refresh the access token.");
+    }
 
-  const userInfo = await fetchQuantumUserInfo(tokenResponse.accessToken);
-  const user = normalizeSessionUser(userInfo);
+    const userInfo = await fetchQuantumUserInfo(tokenResponse.accessToken);
+    const user = normalizeSessionUser(userInfo);
 
-  if (!user) {
-    throw new Error("CHEFU Account did not return a Quantum user.");
-  }
+    if (!user) {
+        throw new Error("We did not return a valid user.");
+    }
 
-  return {
-    accessToken: tokenResponse.accessToken,
-    expiresAt: tokenResponse.issuedAt + tokenResponse.expiresIn,
-    idToken: tokenResponse.idToken,
-    issuedAt: tokenResponse.issuedAt,
-    refreshToken: tokenResponse.refreshToken || session.refreshToken,
-    scope: tokenResponse.scope || session.scope,
-    tokenType: tokenResponse.tokenType,
-    user,
-  } satisfies StoredAuthSession;
+    return {
+        accessToken: tokenResponse.accessToken,
+        expiresAt: tokenResponse.issuedAt + tokenResponse.expiresIn,
+        idToken: tokenResponse.idToken,
+        issuedAt: tokenResponse.issuedAt,
+        refreshToken: tokenResponse.refreshToken || session.refreshToken,
+        scope: tokenResponse.scope || session.scope,
+        tokenType: tokenResponse.tokenType,
+        user,
+    } satisfies StoredAuthSession;
 }
 
 export async function revokeQuantumSession(session: StoredAuthSession | null) {
-  const token = session?.refreshToken || session?.accessToken;
-  if (!token) return;
-  assertTrustedDiscovery();
+    const token = session?.refreshToken || session?.accessToken;
+    if (!token) return;
+    assertTrustedDiscovery();
 
-  await AuthSession.revokeAsync(
-    {
-      clientId: QUANTUM_OAUTH_CLIENT_ID,
-      token,
-      tokenTypeHint: session?.refreshToken
-        ? AuthSession.TokenTypeHint.RefreshToken
-        : AuthSession.TokenTypeHint.AccessToken,
-    },
-    AUTH_DISCOVERY,
-  );
+    await AuthSession.revokeAsync(
+        {
+            clientId: QUANTUM_OAUTH_CLIENT_ID,
+            token,
+            tokenTypeHint: session?.refreshToken
+                ? AuthSession.TokenTypeHint.RefreshToken
+                : AuthSession.TokenTypeHint.AccessToken,
+        },
+        AUTH_DISCOVERY,
+    );
 }
 
 export async function fetchQuantumUserInfo(accessToken: string) {
-  assertSecureBackendUrl(AUTH_DISCOVERY.userInfoEndpoint);
-  return AuthSession.fetchUserInfoAsync(
-    { accessToken },
-    AUTH_DISCOVERY,
-  ) as Promise<OAuthUserInfo>;
+    assertSecureBackendUrl(AUTH_DISCOVERY.userInfoEndpoint);
+    return AuthSession.fetchUserInfoAsync(
+        { accessToken },
+        AUTH_DISCOVERY,
+    ) as Promise<OAuthUserInfo>;
 }
 
 function assertTrustedDiscovery() {
-  assertSecureBackendUrl(AUTH_DISCOVERY.authorizationEndpoint);
-  assertSecureBackendUrl(AUTH_DISCOVERY.revocationEndpoint);
-  assertSecureBackendUrl(AUTH_DISCOVERY.tokenEndpoint);
-  assertSecureBackendUrl(AUTH_DISCOVERY.userInfoEndpoint);
+    assertSecureBackendUrl(AUTH_DISCOVERY.authorizationEndpoint);
+    assertSecureBackendUrl(AUTH_DISCOVERY.revocationEndpoint);
+    assertSecureBackendUrl(AUTH_DISCOVERY.tokenEndpoint);
+    assertSecureBackendUrl(AUTH_DISCOVERY.userInfoEndpoint);
 }
 
 function normalizeSessionUser(userInfo: OAuthUserInfo): SessionUser | null {
-  const uid = typeof userInfo.sub === "string" ? userInfo.sub.trim() : "";
-  const email =
-    typeof userInfo.email === "string" ? userInfo.email.trim() : "";
+    const uid = typeof userInfo.sub === "string" ? userInfo.sub.trim() : "";
+    const email =
+        typeof userInfo.email === "string" ? userInfo.email.trim() : "";
 
-  if (!uid || !email) return null;
+    if (!uid || !email) return null;
 
-  return {
-    displayName:
-      typeof userInfo.name === "string" && userInfo.name.trim()
-        ? userInfo.name.trim()
-        : undefined,
-    email,
-    photoURL:
-      typeof userInfo.picture === "string" && userInfo.picture.trim()
-        ? userInfo.picture.trim()
-        : typeof userInfo.photoURL === "string" && userInfo.photoURL.trim()
-          ? userInfo.photoURL.trim()
-          : undefined,
-    roles: Array.isArray(userInfo.roles)
-      ? userInfo.roles.map(String).filter(Boolean)
-      : [],
-    uid,
-  };
+    return {
+        displayName:
+            typeof userInfo.name === "string" && userInfo.name.trim()
+                ? userInfo.name.trim()
+                : undefined,
+        email,
+        photoURL:
+            typeof userInfo.picture === "string" && userInfo.picture.trim()
+                ? userInfo.picture.trim()
+                : typeof userInfo.photoURL === "string" && userInfo.photoURL.trim()
+                    ? userInfo.photoURL.trim()
+                    : undefined,
+        roles: Array.isArray(userInfo.roles)
+            ? userInfo.roles.map(String).filter(Boolean)
+            : [],
+        uid,
+    };
 }
 
 function validateIdTokenClaims(idToken: string | null | undefined, nonce: string) {
-  if (!idToken) {
-    throw new Error("CHEFU Account did not return an ID token.");
-  }
+    if (!idToken) {
+        throw new Error("We did not return an ID token.");
+    }
 
-  const claims = parseJwtPayload(idToken);
-  const now = Math.floor(Date.now() / 1000);
-  const issuer = CHEFU_API_BASE.replace(/\/$/, "");
+    const claims = parseJwtPayload(idToken);
+    const now = Math.floor(Date.now() / 1000);
+    const issuer = CHEFU_API_BASE.replace(/\/$/, "");
 
-  if (
-    claims.iss !== issuer ||
-    claims.aud !== QUANTUM_OAUTH_CLIENT_ID ||
-    claims.nonce !== nonce ||
-    claims.typ !== "id_token" ||
-    typeof claims.sub !== "string" ||
-    !claims.sub ||
-    typeof claims.exp !== "number" ||
-    typeof claims.iat !== "number" ||
-    claims.exp <= now ||
-    claims.iat > now + 60
-  ) {
-    throw new Error("CHEFU Account returned an invalid ID token.");
-  }
+    if (
+        claims.iss !== issuer ||
+        claims.aud !== QUANTUM_OAUTH_CLIENT_ID ||
+        claims.nonce !== nonce ||
+        claims.typ !== "id_token" ||
+        typeof claims.sub !== "string" ||
+        !claims.sub ||
+        typeof claims.exp !== "number" ||
+        typeof claims.iat !== "number" ||
+        claims.exp <= now ||
+        claims.iat > now + 60
+    ) {
+        throw new Error("We returned an invalid ID token.");
+    }
 }
 
 function parseJwtPayload(token: string) {
-  const [, payload] = token.split(".");
+    const [, payload] = token.split(".");
 
-  if (!payload) {
-    throw new Error("CHEFU Account returned a malformed ID token.");
-  }
+    if (!payload) {
+        throw new Error("We returned a malformed ID token.");
+    }
 
-  try {
-    return JSON.parse(decodeBase64Url(payload)) as Record<string, unknown>;
-  } catch {
-    throw new Error("CHEFU Account returned a malformed ID token.");
-  }
+    try {
+        return JSON.parse(decodeBase64Url(payload)) as Record<string, unknown>;
+    } catch {
+        throw new Error("We returned a malformed ID token.");
+    }
 }
 
 function decodeBase64Url(value: string) {
-  const base64 = value.replace(/-/g, "+").replace(/_/g, "/");
-  const padded = base64.padEnd(Math.ceil(base64.length / 4) * 4, "=");
-  const binary =
-    typeof globalThis.atob === "function"
-      ? globalThis.atob(padded)
-      : decodeBase64(padded);
-  const bytes = Array.from(binary, character =>
-    `%${character.charCodeAt(0).toString(16).padStart(2, "0")}`,
-  ).join("");
+    const base64 = value.replace(/-/g, "+").replace(/_/g, "/");
+    const padded = base64.padEnd(Math.ceil(base64.length / 4) * 4, "=");
+    const binary =
+        typeof globalThis.atob === "function"
+            ? globalThis.atob(padded)
+            : decodeBase64(padded);
+    const bytes = Array.from(binary, character =>
+        `%${character.charCodeAt(0).toString(16).padStart(2, "0")}`,
+    ).join("");
 
-  return decodeURIComponent(bytes);
+    return decodeURIComponent(bytes);
 }
 
 async function randomOAuthParam(size: number) {
-  const alphabet =
-    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789._~-";
-  const bytes = await Crypto.getRandomBytesAsync(size);
+    const alphabet =
+        "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789._~-";
+    const bytes = await Crypto.getRandomBytesAsync(size);
 
-  return Array.from(bytes, byte => alphabet[byte % alphabet.length]).join("");
+    return Array.from(bytes, byte => alphabet[byte % alphabet.length]).join("");
 }
 
 function decodeBase64(value: string) {
-  const alphabet =
-    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-  let buffer = 0;
-  let bits = 0;
-  let output = "";
+    const alphabet =
+        "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+    let buffer = 0;
+    let bits = 0;
+    let output = "";
 
-  for (const character of value.replace(/=+$/, "")) {
-    const index = alphabet.indexOf(character);
-    if (index === -1) {
-      throw new Error("CHEFU Account returned a malformed ID token.");
+    for (const character of value.replace(/=+$/, "")) {
+        const index = alphabet.indexOf(character);
+        if (index === -1) {
+            throw new Error("We returned a malformed ID token.");
+        }
+
+        buffer = (buffer << 6) | index;
+        bits += 6;
+
+        if (bits >= 8) {
+            bits -= 8;
+            output += String.fromCharCode((buffer >> bits) & 0xff);
+        }
     }
 
-    buffer = (buffer << 6) | index;
-    bits += 6;
-
-    if (bits >= 8) {
-      bits -= 8;
-      output += String.fromCharCode((buffer >> bits) & 0xff);
-    }
-  }
-
-  return output;
+    return output;
 }

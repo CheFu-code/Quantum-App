@@ -399,7 +399,7 @@ export function useQuantumChatActions({
   }
 
   async function openLogin() {
-    if (!(await canUseNetwork("Reconnect to sign in with CHEFU Account."))) return;
+    if (!(await canUseNetwork("Reconnect to sign in with your account."))) return;
 
     await onSignIn();
   }
