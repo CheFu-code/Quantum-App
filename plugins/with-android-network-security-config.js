@@ -5,7 +5,7 @@ const path = require("path");
 const NETWORK_SECURITY_CONFIG = `<?xml version="1.0" encoding="utf-8"?>
 <network-security-config>
   <domain-config>
-    <domain includeSubdomains="false">api.chefuinc.com</domain>
+    <domain includeSubdomains="false">api.chefu.co.za</domain>
     <pin-set expiration="2028-06-06">
       <pin digest="SHA-256">MtsYZ7iqObrwKea23+rDYpyl057bSCmJXSAec1Q9JCI=</pin>
       <pin digest="SHA-256">OdSlmQD9NWJh4EbcOHBxkhygPwNSwA9Q91eounfbcoE=</pin>
@@ -14,8 +14,8 @@ const NETWORK_SECURITY_CONFIG = `<?xml version="1.0" encoding="utf-8"?>
   </domain-config>
 
   <domain-config>
-    <domain includeSubdomains="false">quantum.chefuinc.com</domain>
-    <domain includeSubdomains="false">myaccount.chefuinc.com</domain>
+    <domain includeSubdomains="false">quantum.chefu.co.za</domain>
+    <domain includeSubdomains="false">myaccount.chefu.co.za</domain>
     <pin-set expiration="2028-06-06">
       <pin digest="SHA-256">IPQM0tkpsHow75qFyseq7ekjFQww4Jfyw8PLvY8Fd6s=</pin>
       <pin digest="SHA-256">j6wqpPEXchUEzQOmim2VAznlmQ7VDvbHHMFjZ9KaQV0=</pin>

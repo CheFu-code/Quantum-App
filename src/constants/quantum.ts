@@ -8,21 +8,21 @@ import type {
 
 declare const process:
   | {
-      env?: Record<string, string | undefined>;
-    }
+    env?: Record<string, string | undefined>;
+  }
   | undefined;
 
-const DEFAULT_CHAT_API_URL = "https://quantum.chefuinc.com/api/chat";
-const DEFAULT_CHEFU_API_URL = "https://api.chefuinc.com";
-const DEFAULT_CHEFU_ACCOUNT_URL = "https://myaccount.chefuinc.com";
+const DEFAULT_CHAT_API_URL = "https://quantum.chefu.co.za/api/chat";
+const DEFAULT_CHEFU_API_URL = "https://api.chefu.co.za";
+const DEFAULT_CHEFU_ACCOUNT_URL = "https://myaccount.chefu.co.za";
 const DEFAULT_QUANTUM_OAUTH_CLIENT_ID = "quantum-mobile";
 const expoExtra = Constants.expoConfig?.extra as
   | {
-      chefuAccountUrl?: string;
-      chefuApiUrl?: string;
-      quantumChatApiUrl?: string;
-      quantumOauthClientId?: string;
-    }
+    chefuAccountUrl?: string;
+    chefuApiUrl?: string;
+    quantumChatApiUrl?: string;
+    quantumOauthClientId?: string;
+  }
   | undefined;
 
 const configuredChatApiUrl = readPublicConfig(
@@ -149,19 +149,19 @@ export const RESPONSE_STYLES: {
   id: ResponseStyle;
   label: string;
 }[] = [
-  { id: "concise", label: "Concise" },
-  { id: "balanced", label: "Balanced" },
-  { id: "detailed", label: "Detailed" },
-];
+    { id: "concise", label: "Concise" },
+    { id: "balanced", label: "Balanced" },
+    { id: "detailed", label: "Detailed" },
+  ];
 
 export const INFERENCE_TIERS: {
   id: ServiceTier;
   label: string;
 }[] = [
-  { id: "standard", label: "Standard" },
-  { id: "flex", label: "Flex" },
-  { id: "priority", label: "Priority" },
-];
+    { id: "standard", label: "Standard" },
+    { id: "flex", label: "Flex" },
+    { id: "priority", label: "Priority" },
+  ];
 
 export const DEFAULT_CHAT_PREFERENCES: ChatPreferences = {
   autoScroll: true,

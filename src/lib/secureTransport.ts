@@ -1,9 +1,9 @@
 declare const __DEV__: boolean;
 
 const PINNED_BACKEND_HOSTS = new Set([
-  "api.chefuinc.com",
-  "myaccount.chefuinc.com",
-  "quantum.chefuinc.com",
+  "api.chefu.co.za",
+  "myaccount.chefu.co.za",
+  "quantum.chefu.co.za",
 ]);
 
 const LOCAL_DEV_HOSTS = new Set(["10.0.2.2", "127.0.0.1", "localhost"]);

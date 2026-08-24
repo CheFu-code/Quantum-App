@@ -70,7 +70,7 @@ The project includes native modules, so Android development builds should use `n
 By default, the app calls:
 
 ```bash
-https://quantum.chefuinc.com/api/chat
+https://quantum.chefu.co.za/api/chat
 ```
 
 To point the app at the local Next.js Quantum web app, start the web app and set:
