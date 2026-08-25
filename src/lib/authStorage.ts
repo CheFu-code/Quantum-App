@@ -5,7 +5,7 @@ import type { SessionUser } from "@/types/quantum";
 const STORAGE_KEY = "quantum-app-oauth-session";
 const SECURE_STORE_OPTIONS: SecureStore.SecureStoreOptions = {
   keychainAccessible: SecureStore.WHEN_UNLOCKED_THIS_DEVICE_ONLY,
-  keychainService: "com.chefuinc.quantum.auth",
+  keychainService: "com.chefu.co.za.quantum.auth",
 };
 
 export type StoredAuthSession = {

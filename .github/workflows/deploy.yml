@@ -258,7 +258,7 @@ jobs:
             <string>${IOS_TEAM_ID}</string>
             <key>provisioningProfiles</key>
             <dict>
-              <key>com.chefuinc.quantum</key>
+              <key>com.chefu.co.za.quantum</key>
               <string>${{ steps.ios_signing.outputs.profile_name }}</string>
             </dict>
           </dict>

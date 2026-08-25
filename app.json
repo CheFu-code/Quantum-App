@@ -8,10 +8,10 @@
     "scheme": "quantum",
     "userInterfaceStyle": "dark",
     "ios": {
-      "bundleIdentifier": "com.chefuinc.quantum"
+      "bundleIdentifier": "com.chefu.co.za.quantum"
     },
     "android": {
-      "package": "com.chefuinc.quantum",
+      "package": "com.chefu.co.za.quantum",
       "adaptiveIcon": {
         "backgroundColor": "#0D0F14",
         "foregroundImage": "./assets/images/android-icon-foreground.png"
